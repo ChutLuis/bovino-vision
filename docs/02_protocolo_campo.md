@@ -18,6 +18,17 @@ Estado: BORRADOR v0.1 — fecha de sesión pendiente de confirmar con la finca
 - [ ] Teléfono cargado + batería externa + espacio libre ≥ 5 GB.
 - [ ] Poste o soporte para fijar el marcador en el plano del costado del animal.
 
+## Reglas de cámara (Xiaomi 15 Ultra, todas las fotos del modelo)
+- **Lente principal, zoom fijo 1x** — nunca ultra wide ni telefoto (distorsión en bordes).
+- Sin filtros, sin modo retrato, sin mejoras de IA. Resolución idéntica toda la sesión.
+- La escala la da el marcador, no el lente — pero la distorsión del lente sí contamina.
+
+## Sub-experimento: teléfono de gama baja (~10 min, corrección 5)
+Repetir las 5 fotos de 2–3 animales con un teléfono económico (p. ej. de personal
+de la finca, como en la sesión de junio). Objetivo: comparar MAPE flagship vs.
+gama baja — evidencia de que el producto funciona en el teléfono real del usuario
+(RNF-05), no solo en un tope de gama.
+
 ## Procedimiento por animal (~6–8 min)
 1. Leer y anotar el **arete** (y nombre si tiene). Anotar **categoría**: adulta multípara / primeriza / novilla.
 2. **Cinta bovinométrica, lectura 1**: perímetro torácico → libras. Anotar.
