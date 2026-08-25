@@ -1,0 +1,24 @@
+# Modelos pesados — se documentan en pipeline/models/README, se versionan aparte
+pipeline/models/*.pt
+pipeline/mobile_sam.pt
+pipeline/runs/
+
+# Datos crudos de campo (fotos originales viven en Thesis_final_raw con MANIFEST.sha1)
+# Las imágenes curadas para el repo (corrección 10) van en data/samples/ y SÍ se versionan
+pipeline/data/captures/
+pipeline/data/markers/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Android
+app/build/
+app/.gradle/
+app/local.properties
+
+# SO / editores
+.DS_Store
+*.log

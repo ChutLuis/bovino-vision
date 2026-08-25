@@ -1,0 +1,20 @@
+# Pinned versions reflect the constraints of the NVIDIA Jetson PyTorch wheel
+# for JetPack 6.2 (which is compiled against numpy 1.x ABI). See JETSON_SETUP.md
+# for the rationale behind each upper bound — do not relax without re-testing.
+
+ultralytics>=8.4.53
+opencv-contrib-python>=4.10,<4.13   # 4.13+ requires numpy>=2 (breaks Jetson torch)
+numpy>=1.26,<2                       # Jetson torch wheel needs numpy 1.x ABI
+reportlab>=4.0
+pyyaml>=6.0
+
+# Weight-estimation pipeline (morphometry -> regression). Versions capped so they
+# coexist with numpy<2 on Jetson — do NOT let pip pull sklearn/pandas builds that
+# require numpy>=2, or it silently breaks the torch wheel again.
+scikit-learn>=1.3,<1.6
+pandas>=2.0,<2.3
+joblib>=1.3
+
+# Torch + torchvision are intentionally NOT listed here. On macOS they install
+# from PyPI; on Jetson they must come from NVIDIA's mirror (see JETSON_SETUP.md
+# step 3). Including them here would force the wrong wheel on one platform.
