@@ -36,13 +36,37 @@ en el teléfono. Es la verificación "probé la app, no solo el prototipo".
 - `versión_modelo` en cada estimación: trazabilidad de qué modelo produjo qué peso
   (si el modelo se actualiza, el historial no miente).
 
-## D3 — Stack de la app: **Kotlin + Jetpack Compose + CameraX + OpenCV Android**
+## D3 — Stack de la app: **React Native (candidato), sujeto a spike de validación**
 
-- Kotlin/Compose: estándar actual de Android, UI declarativa rápida de iterar.
-- CameraX: preview con análisis de frames para el feedback en vivo (RF-06/07).
-- OpenCV Android SDK: módulo `aruco` (DICT_6X6_250) — mismo algoritmo que el pipeline
-  Python; recorte del SDK para no reventar RNF-04 (≤ 80 MB).
+**Decisión revisada tras análisis (v0.2).** Criterios: el núcleo de inferencia
+(TFLite) corre en C++ nativo vía JSI en ambos stacks → rendimiento del modelo
+idéntico; la diferencia real es riesgo de calendario y propiedad del código.
+El desarrollador domina React Native, no Kotlin: con RN escribe y defiende
+~70% de la app él mismo; con Kotlin nativo defendería código ajeno (riesgo
+tipo "mirroring"). La competencia del desarrollador es un factor de riesgo
+de ingeniería legítimo (metodología, corr. 4).
+
+- **UI/lógica:** React Native + react-native-vision-camera (captura y feedback en vivo).
+- **Inferencia:** react-native-fast-tflite (JSI) con el modelo TFLite FP16 de D1.
+- **ArUco (único riesgo técnico del stack):** tres alternativas, decide el spike:
+  1. `react-native-fast-opencv` (JSI) si expone el módulo aruco.
+  2. Módulo nativo propio mínimo: solo `objdetect/aruco` de OpenCV, una función
+     `detectarMarcador(foto) → esquinas`. Más trabajo, APK liviano.
+  3. `js-aruco2` (JS puro, cero deps nativas) — solo si pasa la prueba de paridad.
 - Mínimo Android 10 / API 29 (RNF-05).
+
+### Spike de validación (1–2 días, en el Samsung A25)
+Sale un veredicto GO/NO-GO de RN; si NO-GO, fallback a Kotlin (v0.1 de este doc).
+1. App mínima RN + fast-tflite cargando `yolo26n-seg` FP16 → medir ms/inferencia
+   sobre 5 fotos de campo reales. Umbral: segmentación ≤ 2.5 s.
+2. Alternativa ArUco (en orden 1→2→3) decodificando ID 0 en 5 fotos de campo.
+   Medir ms y tasa de decodificación.
+3. **Prueba de paridad:** mismas 34 fotos por el pipeline Python y por RN —
+   comparar factor cm/px y área (cm²). Criterio: diferencia ≤ 1%; si el área
+   difiere más, la alternativa ArUco muere (el error de escala se propaga al
+   cuadrado en el área y de ahí al peso).
+4. Benchmark del orden de rechazos (RF-07): medir ArUco vs segmentación por
+   separado; el barato-y-confiable se ejecuta primero.
 
 ## Componentes (base del diagrama de componentes, corr. 9)
 
