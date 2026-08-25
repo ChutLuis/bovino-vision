@@ -25,6 +25,27 @@ de teléfonos del usuario objetivo.
 incluye re-medir IoU y MAPE sobre el conjunto de campo CON el modelo TFLite (no el .pt),
 en el teléfono. Es la verificación "probé la app, no solo el prototipo".
 
+### Resultados del spike — etapa 1: exportación y paridad (25 ago 2026, en PC)
+**Corrección a D1:** Ultralytics 8.4 ya no soporta FP16 en LiteRT (nuevo nombre de
+TFLite). Opciones reales: FP32, INT8 completo (requiere calibración) y **w8a32**
+(cuantización dinámica: pesos INT8, activaciones FP32, **sin calibración**).
+
+| Modelo | Tamaño | IoU vs .pt (35 fotos de campo, medio/mín) | Error de área vs .pt |
+|---|---|---|---|
+| yolo26n-seg.pt (referencia) | 5.9 MB | — | — |
+| LiteRT FP32 | 12 MB | 0.985 / 0.971 | ~similar |
+| **LiteRT w8a32** | **3.5 MB** | 0.983 / 0.971 | medio 0.71%, máx 2.55% |
+
+Efecto en el peso del peor caso de área (2.55%): W ∝ A^0.706 → ~1.8% de sesgo,
+dentro del presupuesto de error (MAPE 7.71%, umbral <10%). **Candidato principal:
+w8a32** (3.5 MB, 4× más chico); el benchmark de velocidad en el A25 confirma.
+
+Nota metodológica del propio spike: la primera medición dio IoU 0.70 por un error
+de geometría en la comparación (la máscara LiteRT conserva el letterbox 640×640 y
+la .pt no; redimensionar sin recortar el padding aplasta la silueta). Corregido el
+recorte, la paridad real es 0.98. Lección idéntica a la de escala ArUco: primero
+audita el instrumento de medición, después juzga al modelo.
+
 ## D2 — Almacenamiento productivo: **SQLite (Room) + almacenamiento privado de la app**
 
 - Base de datos: Room (SQLite) — tablas `animal` (arete, nombre, categoría) y
