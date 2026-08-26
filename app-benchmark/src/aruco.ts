@@ -1,8 +1,8 @@
 import {
   ARUCO_DICTIONARY,
   ARUCO_MAX_HAMMING_DISTANCE,
-  ARUCO_MAX_LONG_SIDE_PX,
   MARKER_ID,
+  MARKER_SIZE_CM,
 } from './config';
 import type { ArucoMeasurement, DecodedImage, Point } from './types';
 
@@ -60,14 +60,13 @@ function ensureDictionary(): void {
 
 export function detectAruco(image: DecodedImage): ArucoMeasurement {
   ensureDictionary();
-  const working = resizeRgbaForAruco(image);
   const startedAt = performance.now();
   const detector = new AR.Detector({
     dictionaryName: DICTIONARY_NAME,
     maxHammingDistance: ARUCO_MAX_HAMMING_DISTANCE,
   });
   const marker = detector
-    .detectImage(working.width, working.height, working.rgba)
+    .detectImage(image.width, image.height, image.rgba)
     .find((candidate) => candidate.id === MARKER_ID);
   const elapsedMs = roundMs(performance.now() - startedAt);
 
@@ -81,18 +80,21 @@ export function detectAruco(image: DecodedImage): ArucoMeasurement {
       corners_precision: 'pixel',
       subpixel_corners: false,
       marker_side_px: null,
+      cm_per_px: null,
       backend: 'js-aruco2',
       source_width: image.width,
       source_height: image.height,
-      working_width: working.width,
-      working_height: working.height,
+      working_width: image.width,
+      working_height: image.height,
+      aruco_working_resolution: {
+        width: image.width,
+        height: image.height,
+      },
     };
   }
 
-  const corners = marker.corners.map((corner) => ({
-    x: (corner.x * image.width) / working.width,
-    y: (corner.y * image.height) / working.height,
-  }));
+  const corners = marker.corners.map((corner) => ({ x: corner.x, y: corner.y }));
+  const markerSidePx = averageSideLength(corners);
 
   return {
     foto: '',
@@ -102,49 +104,36 @@ export function detectAruco(image: DecodedImage): ArucoMeasurement {
     corners,
     corners_precision: 'pixel',
     subpixel_corners: false,
-    marker_side_px: sideLength(corners),
+    marker_side_px: markerSidePx,
+    cm_per_px:
+      markerSidePx == null || !Number.isFinite(markerSidePx) || markerSidePx <= 0
+        ? null
+        : MARKER_SIZE_CM / markerSidePx,
     backend: 'js-aruco2',
     source_width: image.width,
     source_height: image.height,
-    working_width: working.width,
-    working_height: working.height,
+    working_width: image.width,
+    working_height: image.height,
+    aruco_working_resolution: {
+      width: image.width,
+      height: image.height,
+    },
   };
 }
 
-function resizeRgbaForAruco(image: DecodedImage): DecodedImage {
-  const longestSide = Math.max(image.width, image.height);
-  if (longestSide <= ARUCO_MAX_LONG_SIDE_PX) {
-    return image;
-  }
-
-  const scale = ARUCO_MAX_LONG_SIDE_PX / longestSide;
-  const width = Math.max(1, Math.round(image.width * scale));
-  const height = Math.max(1, Math.round(image.height * scale));
-  const rgba = new Uint8Array(width * height * 4);
-
-  for (let y = 0; y < height; y += 1) {
-    const sourceY = Math.min(image.height - 1, Math.floor((y * image.height) / height));
-    for (let x = 0; x < width; x += 1) {
-      const sourceX = Math.min(image.width - 1, Math.floor((x * image.width) / width));
-      const sourceOffset = (sourceY * image.width + sourceX) * 4;
-      const targetOffset = (y * width + x) * 4;
-      rgba[targetOffset] = image.rgba[sourceOffset];
-      rgba[targetOffset + 1] = image.rgba[sourceOffset + 1];
-      rgba[targetOffset + 2] = image.rgba[sourceOffset + 2];
-      rgba[targetOffset + 3] = image.rgba[sourceOffset + 3];
-    }
-  }
-
-  return { width, height, rgba };
-}
-
-function sideLength(corners: Point[]): number | null {
+function averageSideLength(corners: Point[]): number | null {
   if (corners.length !== 4) {
     return null;
   }
 
-  const [first, second] = corners;
-  return roundMs(Math.hypot(first.x - second.x, first.y - second.y));
+  let total = 0;
+  for (let index = 0; index < corners.length; index += 1) {
+    const current = corners[index];
+    const next = corners[(index + 1) % corners.length];
+    total += Math.hypot(current.x - next.x, current.y - next.y);
+  }
+
+  return total / corners.length;
 }
 
 function roundMs(value: number): number {

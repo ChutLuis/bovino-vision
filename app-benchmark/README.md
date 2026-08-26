@@ -8,14 +8,17 @@ Spike Android para decidir GO/NO-GO del pipeline de vision de estimacion de peso
 - Cada foto/modelo tiene 1 corrida `warmup` y 5 corridas `measured`. Solo `TfliteModel.runSync()` queda dentro del cronometro de inferencia.
 - Las detecciones de vaca son clase COCO `19` con confianza `>= 0.5`.
 - La mascara se recompone desde `[1,32,160,160]`, se recorta el letterbox de 640x640 y solo despues se remuestrea con nearest-neighbor al tamano original. `mask_area_px` siempre esta en pixeles de la foto fuente. `postprocess_ms` se registra por separado y no se mezcla con la medicion de `runSync`.
-- ArUco se corre una vez por foto sobre RGBA reescalado a un lado maximo de 960 px. Registra tiempo, ID 0, esquinas y lado del marcador.
-- El archivo JSON contiene 120 ejecuciones de inferencia crudas: 10 fotos x 2 modelos x (1 warmup + 5 medidas).
+- ArUco se corre una vez por foto sobre el RGBA fuente, sin reducir su lado maximo. Registra tiempo, ID 0, esquinas, resolucion efectiva y escala por foto.
+- Al abrir la app, antes de habilitar el benchmark normal, se mide una inferencia FP32 en frio. `cold_start_ms` va desde la inicializacion del primer modulo JS hasta el retorno de esa primera inferencia e incluye la carga de FP32, decodificacion JPEG y letterbox.
+- El archivo JSON conserva las ejecuciones crudas de cada modelo disponible: hasta 120 con ambos modelos (10 fotos x 2 modelos x 1 warmup + 5 medidas).
 
 ## Backend ArUco
 
 Se evaluo primero `react-native-fast-opencv@1.0.1`. El paquete publica un subconjunto de OpenCV y no expone `aruco`, `objdetect`, `ArucoDetector` ni `detectMarkers`; por eso no se instala en la app.
 
 La app usa `js-aruco2@2.0.0` como fallback. El paquete contiene la familia OpenCV `ARUCO_6X6_1000`; el codigo limita sus primeros 250 codigos como `DICT_6X6_250`, usa el presupuesto de correccion de 5 bits de OpenCV, detecta solamente ID 0 y deja `subpixel_corners: false` porque esa biblioteca retorna esquinas a precision de pixel. Las diez fotos incluidas decodifican ID 0 tanto con el detector Python/OpenCV como con este backend JS antes de empaquetarlas.
+
+El refinamiento local subpixel queda pendiente de la paridad a resolucion fuente. No se introduce una correccion geometrica nueva antes de medir el efecto aislado de eliminar el reescalado a 960 px.
 
 El resultado GO/NO-GO de ArUco mide el backend JS que realmente queda en este spike, no una equivalencia implicita con OpenCV. El JSON identifica el backend y conserva las cuatro esquinas para que la prueba de paridad externa compare escala y orden de esquinas contra Python.
 
@@ -152,19 +155,20 @@ source ~/.nvm/nvm.sh && nvm use default
 npm run start:dev-client
 ```
 
-3. Abra el development build en el A25, conectelo al servidor Metro local y pulse **Correr benchmark**. Al terminar, pulse **Exportar JSON** y elija una app o almacenamiento mediante el intent de compartir Android.
+3. Mate el proceso de la app, abra el development build en el A25 y conectelo al servidor Metro local. Espere la medicion automatica de inicio en frio FP32 y despues pulse **Correr benchmark**. Al terminar, pulse **Exportar JSON** y elija una app o almacenamiento mediante el intent de compartir Android.
 
 ## Interpretar `benchmark_results.json`
 
-`summary.fp32` y, cuando esta disponible, `summary.w8a32` contienen `p50_ms` y `p95_ms` calculados solo con registros `inference_runs` cuyo `phase` es `measured`. Si w8a32 falla durante `runSync()`, la prueba continua con FP32 y `summary.w8a32` es `null`; `model_failures.w8a32` conserva el motivo. La definicion del percentil es interpolacion lineal sobre la muestra ordenada. Los registros `warmup` se exportan para trazabilidad pero no entran en los percentiles.
+El export usa `schema_version: 2`. `summary.fp32` y, cuando esta disponible, `summary.w8a32` contienen `p50_ms` y `p95_ms` calculados solo con registros `inference_runs` cuyo `phase` es `measured`. Si w8a32 falla durante `runSync()`, la prueba continua con FP32 y `summary.w8a32` es `null`; `model_failures.w8a32` conserva el motivo. La definicion del percentil es interpolacion lineal sobre la muestra ordenada. Los registros `warmup` se exportan para trazabilidad pero no entran en los percentiles.
 
 Campos principales:
 
 - `device`: modelo, Android, ABI y memoria del telefono que produjo el resultado.
+- `cold_start_ms`: inicializacion JS de la app hasta el retorno de la primera inferencia FP32, con carga del modelo incluida. La medicion se inicia automaticamente para no incluir una pulsacion del usuario; no incluye el bootstrap nativo anterior al primer modulo JS.
 - `inference_runs`: cada `{ device, foto, modelo, phase, run, ms }` crudo.
 - `model_failures`: modelos no disponibles durante la corrida y el motivo reportado por el runtime.
-- `aruco`: cada `{ foto, aruco_ms, decoded, marker_id, corners, marker_side_px }`. Las esquinas estan en coordenadas de la foto original, aunque la deteccion se hizo sobre la copia reescalada.
-- `segmentation`: cada `{ foto, modelo, cow_dets, mask_area_px, postprocess_ms }`. La mascara seleccionada es la vaca de mayor area cuando hay mas de una deteccion; el tiempo de postproceso permite contrastar el presupuesto end-to-end sin contaminar los percentiles de inferencia.
+- `aruco`: cada `{ foto, aruco_ms, decoded, marker_id, corners, marker_side_px, cm_per_px, aruco_working_resolution }`. `marker_side_px` es el promedio de los cuatro lados y `cm_per_px = 15 / marker_side_px`; las esquinas y la resolucion de trabajo estan en coordenadas fuente.
+- `segmentation`: cada `{ foto, modelo, cow_dets, mask_area_px, cm_per_px, area_cm2, postprocess_ms }`. `area_cm2 = mask_area_px x cm_per_px^2`; queda en `null` si no se decodifico ArUco. La mascara seleccionada es la vaca de mayor area cuando hay mas de una deteccion; el tiempo de postproceso permite contrastar el presupuesto end-to-end sin contaminar los percentiles de inferencia.
 - `configuration`: documenta clase COCO, umbrales, modelo de letterbox y backend ArUco para la prueba de paridad Python/RN.
 
 Para comparar areas contra Python, use la misma foto y modelo. Compare `segmentation[].mask_area_px`; el criterio de paridad del spike es diferencia relativa `<= 1%` despues de aplicar la misma regla de seleccion de mascara.

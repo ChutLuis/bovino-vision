@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 
 import { MODELS, PHOTOS } from './src/assets';
-import { evaluateVerdict, runBenchmark } from './src/benchmark';
+import { evaluateVerdict, measureColdStart, runBenchmark } from './src/benchmark';
 import { exportBenchmarkReport } from './src/export';
 import type {
   BenchmarkProgress,
@@ -22,19 +22,56 @@ import type {
 export default function App() {
   const [report, setReport] = useState<BenchmarkReport | null>(null);
   const [progress, setProgress] = useState<BenchmarkProgress | null>(null);
+  const [coldStartMs, setColdStartMs] = useState<number | null>(null);
+  const [isMeasuringColdStart, setIsMeasuringColdStart] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportState, setExportState] = useState<ExportState>('pending');
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    let active = true;
+
+    const runColdStart = async () => {
+      try {
+        const measurement = await measureColdStart((nextProgress) => {
+          if (active) {
+            setProgress(nextProgress);
+          }
+        });
+
+        if (active) {
+          setColdStartMs(measurement);
+        }
+      } catch (cause) {
+        if (active) {
+          setError(toMessage(cause));
+        }
+      } finally {
+        if (active) {
+          setIsMeasuringColdStart(false);
+        }
+      }
+    };
+
+    void runColdStart();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const startBenchmark = async () => {
+    if (coldStartMs == null) {
+      return;
+    }
+
     setError(null);
     setReport(null);
     setExportState('pending');
     setIsRunning(true);
 
     try {
-      const nextReport = await runBenchmark(setProgress);
+      const nextReport = await runBenchmark(coldStartMs, setProgress);
       setReport(nextReport);
     } catch (cause) {
       setError(toMessage(cause));
@@ -75,14 +112,33 @@ export default function App() {
           Requiere un development build; Expo Go no es compatible con LiteRT JSI.
         </Text>
 
+        <View style={styles.coldStart}>
+          <Text style={styles.rowTitle}>Inicio en frio FP32</Text>
+          <Text style={styles.detail}>
+            {isMeasuringColdStart
+              ? 'Midiendo automaticamente desde la apertura de la app...'
+              : coldStartMs == null
+                ? 'Falló. Mate el proceso y vuelva a abrir la app para repetirlo.'
+                : `${formatMs(coldStartMs)} ms hasta la primera inferencia completa.`}
+          </Text>
+        </View>
+
         <Pressable
           accessibilityRole="button"
-          disabled={isRunning || isExporting}
+          disabled={isMeasuringColdStart || coldStartMs == null || isRunning || isExporting}
           onPress={startBenchmark}
-          style={[styles.primaryButton, (isRunning || isExporting) && styles.buttonDisabled]}
+          style={[
+            styles.primaryButton,
+            (isMeasuringColdStart || coldStartMs == null || isRunning || isExporting) &&
+              styles.buttonDisabled,
+          ]}
         >
           <Text style={styles.primaryButtonText}>
-            {isRunning ? 'Corriendo benchmark...' : 'Correr benchmark'}
+            {isMeasuringColdStart
+              ? 'Midiendo inicio en frio...'
+              : isRunning
+                ? 'Corriendo benchmark...'
+                : 'Correr benchmark'}
           </Text>
         </Pressable>
 
@@ -167,6 +223,9 @@ export default function App() {
                 ArUco ID 0: {report.summary.aruco_decoded}/{report.summary.aruco_total}. Backend:{' '}
                 {report.aruco_backend.name}.
               </Text>
+              <Text style={styles.detail}>
+                Inicio en frio FP32: {formatMs(report.cold_start_ms)} ms.
+              </Text>
             </Section>
 
             <Section title="Segmentacion por foto">
@@ -177,7 +236,9 @@ export default function App() {
                   </Text>
                   <Text style={styles.detail}>
                     vacas={measurement.cow_dets} | area={measurement.mask_area_px} px original | post=
-                    {formatMs(measurement.postprocess_ms)} ms | conf=
+                    {formatMs(measurement.postprocess_ms)} ms | escala=
+                    {formatCmPerPx(measurement.cm_per_px)} cm/px | area=
+                    {formatCm2(measurement.area_cm2)} cm2 | conf=
                     {measurement.selected_confidence == null
                       ? 'n/a'
                       : measurement.selected_confidence.toFixed(3)}
@@ -192,7 +253,10 @@ export default function App() {
                   <Text style={styles.rowTitle}>{photoLabel(measurement.foto)}</Text>
                   <Text style={styles.detail}>
                     {measurement.decoded ? 'ID 0 decodificado' : 'sin ID 0'} | {formatMs(measurement.aruco_ms)}
-                    {' ms'} | esquinas {measurement.subpixel_corners ? 'subpixel' : 'pixel'}
+                    {' ms'} | {measurement.aruco_working_resolution.width}x
+                    {measurement.aruco_working_resolution.height} px | esquinas{' '}
+                    {measurement.subpixel_corners ? 'subpixel' : 'pixel'} | escala{' '}
+                    {formatCmPerPx(measurement.cm_per_px)} cm/px
                   </Text>
                 </View>
               ))}
@@ -236,6 +300,14 @@ function formatMs(value: number): string {
   return value.toFixed(1);
 }
 
+function formatCmPerPx(value: number | null): string {
+  return value == null ? 'n/a' : value.toFixed(5);
+}
+
+function formatCm2(value: number | null): string {
+  return value == null ? 'n/a' : value.toFixed(1);
+}
+
 function toMessage(cause: unknown): string {
   return cause instanceof Error ? cause.message : String(cause);
 }
@@ -259,6 +331,14 @@ const styles = StyleSheet.create({
     color: '#4c544e',
     fontSize: 14,
     lineHeight: 20,
+  },
+  coldStart: {
+    backgroundColor: '#edf0ea',
+    borderColor: '#d8ddd6',
+    borderRadius: 6,
+    borderWidth: 1,
+    gap: 2,
+    padding: 12,
   },
   primaryButton: {
     alignItems: 'center',

@@ -59,11 +59,16 @@ export interface ArucoMeasurement {
   corners_precision: 'pixel';
   subpixel_corners: false;
   marker_side_px: number | null;
+  cm_per_px: number | null;
   backend: ArucoBackend;
   source_width: number;
   source_height: number;
   working_width: number;
   working_height: number;
+  aruco_working_resolution: {
+    width: number;
+    height: number;
+  };
 }
 
 export interface SegmentationMeasurement {
@@ -71,6 +76,8 @@ export interface SegmentationMeasurement {
   modelo: ModelId;
   cow_dets: number;
   mask_area_px: number;
+  cm_per_px: number | null;
+  area_cm2: number | null;
   postprocess_ms: number;
   selected_confidence: number | null;
   selected_bbox_original_px: [number, number, number, number] | null;
@@ -95,9 +102,10 @@ export interface BenchmarkSummary {
 }
 
 export interface BenchmarkReport {
-  schema_version: 1;
+  schema_version: 2;
   started_at: string;
   finished_at: string;
+  cold_start_ms: number;
   device: DeviceInfo;
   app: {
     expo_sdk: string;
@@ -114,7 +122,11 @@ export interface BenchmarkReport {
     marker_dictionary: 'DICT_6X6_250';
     marker_id: 0;
     marker_size_cm: 15;
-    aruco_max_long_side_px: 960;
+    aruco_max_long_side_px: null;
+    aruco_resolution_mode: 'source_image';
+    aruco_corner_refinement: 'pending_full_resolution_parity';
+    marker_side_measure: 'mean_of_four_sides';
+    cold_start_boundary: 'js_module_init_to_first_fp32_inference';
     mask_area_space: 'original_image_px';
     mask_resample: 'nearest_neighbor_after_letterbox_crop';
   };

@@ -1,0 +1,1092 @@
+{
+  "schema_version": 2,
+  "started_at": "2026-08-26T22:03:29.338Z",
+  "finished_at": "2026-08-26T22:04:37.835Z",
+  "cold_start_ms": 3971.943,
+  "device": {
+    "brand": "samsung",
+    "manufacturer": "samsung",
+    "model_name": "SM-A256E",
+    "model_id": null,
+    "os_name": "samsung/a25xdxx/a25x:16/BP4A.251205.006/A256EXXUCEZE6:user/release-keys",
+    "os_version": "16",
+    "android_api_level": 36,
+    "supported_cpu_architectures": [
+      "arm64-v8a",
+      "armeabi-v7a",
+      "armeabi"
+    ],
+    "total_memory_mb": 7398,
+    "is_physical_device": true
+  },
+  "app": {
+    "expo_sdk": "57",
+    "inference_runtime": "react-native-fast-tflite 3.0.1",
+    "inference_delegate": "cpu-default"
+  },
+  "configuration": {
+    "input_size": 640,
+    "input_layout": "NCHW",
+    "cow_coco_class": 19,
+    "confidence_threshold": 0.5,
+    "warmup_runs_per_photo_model": 1,
+    "measured_runs_per_photo_model": 5,
+    "marker_dictionary": "DICT_6X6_250",
+    "marker_id": 0,
+    "marker_size_cm": 15,
+    "aruco_max_long_side_px": null,
+    "aruco_resolution_mode": "source_image",
+    "aruco_corner_refinement": "pending_full_resolution_parity",
+    "marker_side_measure": "mean_of_four_sides",
+    "cold_start_boundary": "js_module_init_to_first_fp32_inference",
+    "mask_area_space": "original_image_px",
+    "mask_resample": "nearest_neighbor_after_letterbox_crop"
+  },
+  "aruco_backend": {
+    "name": "js-aruco2",
+    "reason": "react-native-fast-opencv@1.0.1 no expone aruco/objdetect; se usa js-aruco2 con el diccionario OpenCV 6x6 limitado a 250 IDs."
+  },
+  "inference_runs": [
+    {
+      "device": "SM-A256E",
+      "foto": "01_camelia",
+      "modelo": "fp32",
+      "phase": "warmup",
+      "run": 0,
+      "ms": 464.244
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "01_camelia",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 1,
+      "ms": 439.828
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "01_camelia",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 2,
+      "ms": 436.794
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "01_camelia",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 3,
+      "ms": 435.634
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "01_camelia",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 4,
+      "ms": 435.478
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "01_camelia",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 5,
+      "ms": 443.624
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "02_paulina",
+      "modelo": "fp32",
+      "phase": "warmup",
+      "run": 0,
+      "ms": 437.6
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "02_paulina",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 1,
+      "ms": 442.929
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "02_paulina",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 2,
+      "ms": 449.76
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "02_paulina",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 3,
+      "ms": 459.615
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "02_paulina",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 4,
+      "ms": 439.665
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "02_paulina",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 5,
+      "ms": 444.819
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "03_nohelia",
+      "modelo": "fp32",
+      "phase": "warmup",
+      "run": 0,
+      "ms": 455.06
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "03_nohelia",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 1,
+      "ms": 462.148
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "03_nohelia",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 2,
+      "ms": 449.509
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "03_nohelia",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 3,
+      "ms": 448.186
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "03_nohelia",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 4,
+      "ms": 451.962
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "03_nohelia",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 5,
+      "ms": 459.699
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "04_ford",
+      "modelo": "fp32",
+      "phase": "warmup",
+      "run": 0,
+      "ms": 445.229
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "04_ford",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 1,
+      "ms": 442.003
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "04_ford",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 2,
+      "ms": 455.793
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "04_ford",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 3,
+      "ms": 461.137
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "04_ford",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 4,
+      "ms": 469.404
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "04_ford",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 5,
+      "ms": 461.075
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "05_karina",
+      "modelo": "fp32",
+      "phase": "warmup",
+      "run": 0,
+      "ms": 454.903
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "05_karina",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 1,
+      "ms": 454.872
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "05_karina",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 2,
+      "ms": 452.877
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "05_karina",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 3,
+      "ms": 466.258
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "05_karina",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 4,
+      "ms": 462.894
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "05_karina",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 5,
+      "ms": 467.856
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "06_selena",
+      "modelo": "fp32",
+      "phase": "warmup",
+      "run": 0,
+      "ms": 452.719
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "06_selena",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 1,
+      "ms": 448.366
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "06_selena",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 2,
+      "ms": 454.464
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "06_selena",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 3,
+      "ms": 472.31
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "06_selena",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 4,
+      "ms": 465.679
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "06_selena",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 5,
+      "ms": 458.053
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "07_chiquita",
+      "modelo": "fp32",
+      "phase": "warmup",
+      "run": 0,
+      "ms": 467.906
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "07_chiquita",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 1,
+      "ms": 454.36
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "07_chiquita",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 2,
+      "ms": 467.994
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "07_chiquita",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 3,
+      "ms": 459.352
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "07_chiquita",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 4,
+      "ms": 455.419
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "07_chiquita",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 5,
+      "ms": 466.846
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "08_mafer",
+      "modelo": "fp32",
+      "phase": "warmup",
+      "run": 0,
+      "ms": 456.449
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "08_mafer",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 1,
+      "ms": 455.456
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "08_mafer",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 2,
+      "ms": 457.554
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "08_mafer",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 3,
+      "ms": 456.989
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "08_mafer",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 4,
+      "ms": 446.788
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "08_mafer",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 5,
+      "ms": 453.424
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "09_daniela",
+      "modelo": "fp32",
+      "phase": "warmup",
+      "run": 0,
+      "ms": 471.021
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "09_daniela",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 1,
+      "ms": 461.567
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "09_daniela",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 2,
+      "ms": 455.592
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "09_daniela",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 3,
+      "ms": 469.904
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "09_daniela",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 4,
+      "ms": 460.93
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "09_daniela",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 5,
+      "ms": 467.126
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "10_mariita",
+      "modelo": "fp32",
+      "phase": "warmup",
+      "run": 0,
+      "ms": 470.834
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "10_mariita",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 1,
+      "ms": 454.06
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "10_mariita",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 2,
+      "ms": 460.626
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "10_mariita",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 3,
+      "ms": 475.104
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "10_mariita",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 4,
+      "ms": 446.717
+    },
+    {
+      "device": "SM-A256E",
+      "foto": "10_mariita",
+      "modelo": "fp32",
+      "phase": "measured",
+      "run": 5,
+      "ms": 469.772
+    }
+  ],
+  "aruco": [
+    {
+      "foto": "01_camelia",
+      "aruco_ms": 1343.405,
+      "decoded": true,
+      "marker_id": 0,
+      "corners": [
+        {
+          "x": 1162,
+          "y": 241
+        },
+        {
+          "x": 1226,
+          "y": 245
+        },
+        {
+          "x": 1216,
+          "y": 310
+        },
+        {
+          "x": 1153,
+          "y": 306
+        }
+      ],
+      "corners_precision": "pixel",
+      "subpixel_corners": false,
+      "marker_side_px": 64.65914640794833,
+      "cm_per_px": 0.23198574112565304,
+      "backend": "js-aruco2",
+      "source_width": 1280,
+      "source_height": 960,
+      "working_width": 1280,
+      "working_height": 960,
+      "aruco_working_resolution": {
+        "width": 1280,
+        "height": 960
+      }
+    },
+    {
+      "foto": "02_paulina",
+      "aruco_ms": 1392.926,
+      "decoded": true,
+      "marker_id": 0,
+      "corners": [
+        {
+          "x": 1163,
+          "y": 212
+        },
+        {
+          "x": 1225,
+          "y": 216
+        },
+        {
+          "x": 1216,
+          "y": 279
+        },
+        {
+          "x": 1154,
+          "y": 276
+        }
+      ],
+      "corners_precision": "pixel",
+      "subpixel_corners": false,
+      "marker_side_px": 63.11769032860141,
+      "cm_per_px": 0.23765128162813712,
+      "backend": "js-aruco2",
+      "source_width": 1280,
+      "source_height": 960,
+      "working_width": 1280,
+      "working_height": 960,
+      "aruco_working_resolution": {
+        "width": 1280,
+        "height": 960
+      }
+    },
+    {
+      "foto": "03_nohelia",
+      "aruco_ms": 1400.363,
+      "decoded": true,
+      "marker_id": 0,
+      "corners": [
+        {
+          "x": 1129,
+          "y": 263
+        },
+        {
+          "x": 1188,
+          "y": 266
+        },
+        {
+          "x": 1180,
+          "y": 325
+        },
+        {
+          "x": 1122,
+          "y": 322
+        }
+      ],
+      "corners_precision": "pixel",
+      "subpixel_corners": false,
+      "marker_side_px": 59.02686550759068,
+      "cm_per_px": 0.2541215744900268,
+      "backend": "js-aruco2",
+      "source_width": 1280,
+      "source_height": 960,
+      "working_width": 1280,
+      "working_height": 960,
+      "aruco_working_resolution": {
+        "width": 1280,
+        "height": 960
+      }
+    },
+    {
+      "foto": "04_ford",
+      "aruco_ms": 1447.125,
+      "decoded": true,
+      "marker_id": 0,
+      "corners": [
+        {
+          "x": 1111,
+          "y": 216
+        },
+        {
+          "x": 1170,
+          "y": 219
+        },
+        {
+          "x": 1161,
+          "y": 279
+        },
+        {
+          "x": 1103,
+          "y": 276
+        }
+      ],
+      "corners_precision": "pixel",
+      "subpixel_corners": false,
+      "marker_side_px": 59.58899634601261,
+      "cm_per_px": 0.2517243269697011,
+      "backend": "js-aruco2",
+      "source_width": 1280,
+      "source_height": 960,
+      "working_width": 1280,
+      "working_height": 960,
+      "aruco_working_resolution": {
+        "width": 1280,
+        "height": 960
+      }
+    },
+    {
+      "foto": "05_karina",
+      "aruco_ms": 1457.575,
+      "decoded": true,
+      "marker_id": 0,
+      "corners": [
+        {
+          "x": 1090,
+          "y": 220
+        },
+        {
+          "x": 1148,
+          "y": 223
+        },
+        {
+          "x": 1139,
+          "y": 283
+        },
+        {
+          "x": 1082,
+          "y": 279
+        }
+      ],
+      "corners_precision": "pixel",
+      "subpixel_corners": false,
+      "marker_side_px": 58.85721518161497,
+      "cm_per_px": 0.2548540557638463,
+      "backend": "js-aruco2",
+      "source_width": 1280,
+      "source_height": 960,
+      "working_width": 1280,
+      "working_height": 960,
+      "aruco_working_resolution": {
+        "width": 1280,
+        "height": 960
+      }
+    },
+    {
+      "foto": "06_selena",
+      "aruco_ms": 1338.294,
+      "decoded": true,
+      "marker_id": 0,
+      "corners": [
+        {
+          "x": 1131,
+          "y": 337
+        },
+        {
+          "x": 1188,
+          "y": 342
+        },
+        {
+          "x": 1180,
+          "y": 397
+        },
+        {
+          "x": 1123,
+          "y": 392
+        }
+      ],
+      "corners_precision": "pixel",
+      "subpixel_corners": false,
+      "marker_side_px": 56.39882546502044,
+      "cm_per_px": 0.2659629855111658,
+      "backend": "js-aruco2",
+      "source_width": 1280,
+      "source_height": 960,
+      "working_width": 1280,
+      "working_height": 960,
+      "aruco_working_resolution": {
+        "width": 1280,
+        "height": 960
+      }
+    },
+    {
+      "foto": "07_chiquita",
+      "aruco_ms": 1490.262,
+      "decoded": true,
+      "marker_id": 0,
+      "corners": [
+        {
+          "x": 1109,
+          "y": 224
+        },
+        {
+          "x": 1165,
+          "y": 228
+        },
+        {
+          "x": 1156,
+          "y": 283
+        },
+        {
+          "x": 1101,
+          "y": 280
+        }
+      ],
+      "corners_precision": "pixel",
+      "subpixel_corners": false,
+      "marker_side_px": 55.881118618362336,
+      "cm_per_px": 0.2684269816150576,
+      "backend": "js-aruco2",
+      "source_width": 1280,
+      "source_height": 960,
+      "working_width": 1280,
+      "working_height": 960,
+      "aruco_working_resolution": {
+        "width": 1280,
+        "height": 960
+      }
+    },
+    {
+      "foto": "08_mafer",
+      "aruco_ms": 1389.274,
+      "decoded": true,
+      "marker_id": 0,
+      "corners": [
+        {
+          "x": 1106,
+          "y": 328
+        },
+        {
+          "x": 1162,
+          "y": 331
+        },
+        {
+          "x": 1155,
+          "y": 387
+        },
+        {
+          "x": 1099,
+          "y": 384
+        }
+      ],
+      "corners_precision": "pixel",
+      "subpixel_corners": false,
+      "marker_side_px": 56.258051904664825,
+      "cm_per_px": 0.2666285001375283,
+      "backend": "js-aruco2",
+      "source_width": 1280,
+      "source_height": 960,
+      "working_width": 1280,
+      "working_height": 960,
+      "aruco_working_resolution": {
+        "width": 1280,
+        "height": 960
+      }
+    },
+    {
+      "foto": "09_daniela",
+      "aruco_ms": 1369.163,
+      "decoded": true,
+      "marker_id": 0,
+      "corners": [
+        {
+          "x": 1150,
+          "y": 297
+        },
+        {
+          "x": 1205,
+          "y": 300
+        },
+        {
+          "x": 1197,
+          "y": 356
+        },
+        {
+          "x": 1142,
+          "y": 352
+        }
+      ],
+      "corners_precision": "pixel",
+      "subpixel_corners": false,
+      "marker_side_px": 55.59358388820385,
+      "cm_per_px": 0.26981530872635073,
+      "backend": "js-aruco2",
+      "source_width": 1280,
+      "source_height": 960,
+      "working_width": 1280,
+      "working_height": 960,
+      "aruco_working_resolution": {
+        "width": 1280,
+        "height": 960
+      }
+    },
+    {
+      "foto": "10_mariita",
+      "aruco_ms": 1448.833,
+      "decoded": true,
+      "marker_id": 0,
+      "corners": [
+        {
+          "x": 1154,
+          "y": 240
+        },
+        {
+          "x": 1209,
+          "y": 245
+        },
+        {
+          "x": 1198,
+          "y": 301
+        },
+        {
+          "x": 1143,
+          "y": 297
+        }
+      ],
+      "corners_precision": "pixel",
+      "subpixel_corners": false,
+      "marker_side_px": 56.37347529752658,
+      "cm_per_px": 0.2660825844217224,
+      "backend": "js-aruco2",
+      "source_width": 1280,
+      "source_height": 960,
+      "working_width": 1280,
+      "working_height": 960,
+      "aruco_working_resolution": {
+        "width": 1280,
+        "height": 960
+      }
+    }
+  ],
+  "segmentation": [
+    {
+      "foto": "01_camelia",
+      "modelo": "fp32",
+      "cow_dets": 1,
+      "mask_area_px": 281280,
+      "selected_confidence": 0.8612614274024963,
+      "selected_bbox_original_px": [
+        61.5,
+        294.91,
+        1027.25,
+        896.4
+      ],
+      "mask_selection": "largest_area_cow",
+      "cm_per_px": 0.23198574112565304,
+      "area_cm2": 15137.753795602774,
+      "postprocess_ms": 149.667
+    },
+    {
+      "foto": "02_paulina",
+      "modelo": "fp32",
+      "cow_dets": 1,
+      "mask_area_px": 259072,
+      "selected_confidence": 0.9317150115966797,
+      "selected_bbox_original_px": [
+        83.53,
+        274.46,
+        1012.03,
+        845.67
+      ],
+      "mask_selection": "largest_area_cow",
+      "cm_per_px": 0.23765128162813712,
+      "area_cm2": 14631.902525288984,
+      "postprocess_ms": 143.604
+    },
+    {
+      "foto": "03_nohelia",
+      "modelo": "fp32",
+      "cow_dets": 1,
+      "mask_area_px": 231424,
+      "selected_confidence": 0.9506771564483643,
+      "selected_bbox_original_px": [
+        87.53,
+        241.45,
+        966.5,
+        865.82
+      ],
+      "mask_selection": "largest_area_cow",
+      "cm_per_px": 0.2541215744900268,
+      "area_cm2": 14944.846913957474,
+      "postprocess_ms": 145.43
+    },
+    {
+      "foto": "04_ford",
+      "modelo": "fp32",
+      "cow_dets": 1,
+      "mask_area_px": 230272,
+      "selected_confidence": 0.9096096158027649,
+      "selected_bbox_original_px": [
+        56.46,
+        287.37,
+        964.24,
+        866.81
+      ],
+      "mask_selection": "largest_area_cow",
+      "cm_per_px": 0.2517243269697011,
+      "area_cm2": 14591.216778526697,
+      "postprocess_ms": 142.096
+    },
+    {
+      "foto": "05_karina",
+      "modelo": "fp32",
+      "cow_dets": 2,
+      "mask_area_px": 227520,
+      "selected_confidence": 0.9495337009429932,
+      "selected_bbox_original_px": [
+        65.51,
+        235.1,
+        940.12,
+        815.18
+      ],
+      "mask_selection": "largest_area_cow",
+      "cm_per_px": 0.2548540557638463,
+      "area_cm2": 14777.558177481367,
+      "postprocess_ms": 255.14
+    },
+    {
+      "foto": "06_selena",
+      "modelo": "fp32",
+      "cow_dets": 1,
+      "mask_area_px": 244416,
+      "selected_confidence": 0.936028003692627,
+      "selected_bbox_original_px": [
+        143.44,
+        323.57,
+        1012.06,
+        933.07
+      ],
+      "mask_selection": "largest_area_cow",
+      "cm_per_px": 0.2659629855111658,
+      "area_cm2": 17289.085862350472,
+      "postprocess_ms": 144.703
+    },
+    {
+      "foto": "07_chiquita",
+      "modelo": "fp32",
+      "cow_dets": 1,
+      "mask_area_px": 213248,
+      "selected_confidence": 0.9448392987251282,
+      "selected_bbox_original_px": [
+        105.51,
+        282.31,
+        953.51,
+        833.81
+      ],
+      "mask_selection": "largest_area_cow",
+      "cm_per_px": 0.2684269816150576,
+      "area_cm2": 15365.167624786538,
+      "postprocess_ms": 139.203
+    },
+    {
+      "foto": "08_mafer",
+      "modelo": "fp32",
+      "cow_dets": 1,
+      "mask_area_px": 240000,
+      "selected_confidence": 0.9595003724098206,
+      "selected_bbox_original_px": [
+        216.81,
+        311.49,
+        1059.87,
+        917.39
+      ],
+      "mask_selection": "largest_area_cow",
+      "cm_per_px": 0.2666285001375283,
+      "area_cm2": 17061.781700541105,
+      "postprocess_ms": 144.483
+    },
+    {
+      "foto": "09_daniela",
+      "modelo": "fp32",
+      "cow_dets": 1,
+      "mask_area_px": 261952,
+      "selected_confidence": 0.9104806780815125,
+      "selected_bbox_original_px": [
+        114.43,
+        347.2,
+        1039.94,
+        883.45
+      ],
+      "mask_selection": "largest_area_cow",
+      "cm_per_px": 0.26981530872635073,
+      "area_cm2": 19070.184401211634,
+      "postprocess_ms": 150.899
+    },
+    {
+      "foto": "10_mariita",
+      "modelo": "fp32",
+      "cow_dets": 1,
+      "mask_area_px": 318080,
+      "selected_confidence": 0.9451497793197632,
+      "selected_bbox_original_px": [
+        96.69,
+        270.74,
+        1125.76,
+        839.12
+      ],
+      "mask_selection": "largest_area_cow",
+      "cm_per_px": 0.2660825844217224,
+      "area_cm2": 22520.045466287287,
+      "postprocess_ms": 149.779
+    }
+  ],
+  "model_failures": {
+    "w8a32": "TfliteModel.runSync(...): TFLite: Failed to run TFLite Model! Status: error"
+  },
+  "summary": {
+    "fp32": {
+      "count": 50,
+      "min_ms": 435.478,
+      "max_ms": 475.104,
+      "mean_ms": 455.765,
+      "p50_ms": 455.693,
+      "p95_ms": 469.845
+    },
+    "w8a32": null,
+    "aruco_decoded": 10,
+    "aruco_total": 10,
+    "aruco_decode_rate": 1
+  }
+}

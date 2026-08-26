@@ -11,6 +11,7 @@ export const MARKER_ID = 0;
 export const MARKER_SIZE_CM = 15;
 export const ARUCO_DICTIONARY = 'DICT_6X6_250' as const;
 export const ARUCO_MAX_HAMMING_DISTANCE = 5;
-export const ARUCO_MAX_LONG_SIDE_PX = 960;
+// null means detect on the source image without a maximum-side resize.
+export const ARUCO_MAX_LONG_SIDE_PX = null;
 export const SEGMENTATION_GO_P50_MS = 2500;
 export const ARUCO_GO_MIN_DECODED = 9;

@@ -15,6 +15,7 @@ import {
   WARMUP_RUNS,
 } from './config';
 import { detectAruco } from './aruco';
+import { APP_MODULE_INIT_MS } from './cold-start';
 import { collectDeviceInfo, isGalaxyA25 } from './device';
 import { asArrayBuffer, decodeBundledJpeg, letterboxToNchw } from './image';
 import { measureSegmentation } from './segment';
@@ -38,6 +39,7 @@ interface LoadedModel {
 }
 
 export async function runBenchmark(
+  coldStartMs: number,
   onProgress: (progress: BenchmarkProgress) => void,
 ): Promise<BenchmarkReport> {
   const startedAt = new Date().toISOString();
@@ -141,6 +143,11 @@ export async function runBenchmark(
         );
         segmentation.push({
           ...segmentationMeasurement,
+          cm_per_px: arucoMeasurement.cm_per_px,
+          area_cm2: toSquareCentimeters(
+            segmentationMeasurement.mask_area_px,
+            arucoMeasurement.cm_per_px,
+          ),
           postprocess_ms: roundMs(performance.now() - postprocessStarted),
         });
         completed += 1;
@@ -180,9 +187,10 @@ export async function runBenchmark(
   const arucoDecoded = aruco.filter((result) => result.decoded).length;
 
   return {
-    schema_version: 1,
+    schema_version: 2,
     started_at: startedAt,
     finished_at: new Date().toISOString(),
+    cold_start_ms: coldStartMs,
     device,
     app: {
       expo_sdk: '57',
@@ -200,6 +208,10 @@ export async function runBenchmark(
       marker_id: MARKER_ID,
       marker_size_cm: MARKER_SIZE_CM,
       aruco_max_long_side_px: ARUCO_MAX_LONG_SIDE_PX,
+      aruco_resolution_mode: 'source_image',
+      aruco_corner_refinement: 'pending_full_resolution_parity',
+      marker_side_measure: 'mean_of_four_sides',
+      cold_start_boundary: 'js_module_init_to_first_fp32_inference',
       mask_area_space: 'original_image_px',
       mask_resample: 'nearest_neighbor_after_letterbox_crop',
     },
@@ -225,6 +237,41 @@ export async function runBenchmark(
       aruco_decode_rate: aruco.length === 0 ? 0 : arucoDecoded / aruco.length,
     },
   };
+}
+
+export async function measureColdStart(
+  onProgress: (progress: BenchmarkProgress) => void,
+): Promise<number> {
+  const fp32 = MODELS.find((model) => model.id === 'fp32');
+  const firstPhoto = PHOTOS[0];
+
+  if (fp32 == null || firstPhoto == null) {
+    throw new Error('No hay modelo FP32 o foto inicial para medir el inicio en frio.');
+  }
+
+  onProgress({
+    completed: 0,
+    total: 1,
+    phase: 'Midiendo inicio en frio FP32',
+    photo: firstPhoto.label,
+    model: fp32.id,
+  });
+
+  const model = await loadBundledModel(fp32.asset);
+  const decoded = await decodeBundledJpeg(firstPhoto.asset);
+  const prepared = letterboxToNchw(decoded);
+  model.runSync([asArrayBuffer(prepared.input)]);
+
+  const coldStartMs = roundMs(performance.now() - APP_MODULE_INIT_MS);
+  onProgress({
+    completed: 1,
+    total: 1,
+    phase: 'Inicio en frio FP32 completado',
+    photo: firstPhoto.label,
+    model: fp32.id,
+  });
+
+  return coldStartMs;
 }
 
 export function evaluateVerdict(
@@ -279,6 +326,18 @@ function deviceLabel(reportDevice: BenchmarkReport['device']): string {
 
 function roundMs(value: number): number {
   return Math.round(value * 1000) / 1000;
+}
+
+function toSquareCentimeters(maskAreaPx: number, cmPerPx: number | null): number | null {
+  if (
+    cmPerPx == null ||
+    !Number.isFinite(cmPerPx) ||
+    !Number.isFinite(maskAreaPx)
+  ) {
+    return null;
+  }
+
+  return maskAreaPx * cmPerPx * cmPerPx;
 }
 
 function toErrorMessage(cause: unknown): string {

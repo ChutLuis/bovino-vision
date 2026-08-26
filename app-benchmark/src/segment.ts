@@ -19,7 +19,7 @@ export function measureSegmentation(
   letterbox: LetterboxMeta,
   foto: string,
   modelo: SegmentationMeasurement['modelo'],
-): Omit<SegmentationMeasurement, 'postprocess_ms'> {
+): Omit<SegmentationMeasurement, 'postprocess_ms' | 'cm_per_px' | 'area_cm2'> {
   const detections = new Float32Array(outputBuffers[0]);
   const prototypes = new Float32Array(outputBuffers[1]);
 
