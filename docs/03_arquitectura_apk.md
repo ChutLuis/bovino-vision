@@ -93,6 +93,26 @@ midieron con imgsz=640). Reentrenar/exportar a 960–1280 (≈4× píxeles, ≈4
 cambiaría de instrumento sin evidencia de necesidad. Único frente abierto del
 spike: el sesgo de escala ArUco (experimento de resolución completa en curso).
 
+### Resultados del spike — etapa 3: ArUco a resolución completa → **SPIKE CERRADO: GO**
+(26 ago 2026, `informes/benchmark_a25_20260826_fullres.json`, schema v2)
+
+Con detección sobre la imagen fuente (1280×960, sin reducción a 960):
+- **Paridad de escala: PASA** — dif media +0.63%, máx 0.82% (antes: +1.2% / 2.2%).
+- Costo: aruco_ms subió de ~830 a ~1,400 ms. Flujo total ≈ 2.0 s < 3 s (RNF-02 ✓).
+- **Cold start medido: 3.97 s** (init JS → primera inferencia FP32, app recién
+  abierta). Implicación de UX: pantalla de carga con precarga del modelo al abrir
+  la app, no al tomar la foto.
+- Sesgo residual sigue siendo sistemático (+0.63%, mismo signo: esquinas de
+  precisión entera sin refinamiento subpíxel). Efecto en peso ≈ +0.9%, aceptable.
+  En producción la cámara nativa da marcadores de 180–250 px (vs 55–64 px en
+  estas fotos WhatsApp), donde el mismo error absoluto ≈ 0.15–0.2% de escala.
+  Backlog opcional: refinamiento subpíxel propio si la validación de campo del
+  APK muestra que el residual importa.
+
+**Veredicto del spike completo:** React Native + LiteRT FP32 + js-aruco2 a
+resolución completa cumple todos los criterios en el Galaxy A25. Se procede a
+construir el APK de producto sobre esta base.
+
 **Hallazgo de benchmark vs intuición:** el orden de rechazos asumido ("ArUco
 barato primero") resultó invertido en el A25: segmentación 449 ms < ArUco 830 ms.
 El orden definitivo del flujo se fija con los números de la iteración final.
