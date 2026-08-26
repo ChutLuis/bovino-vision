@@ -71,7 +71,7 @@ export default function App() {
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Benchmark de vision bovina</Text>
         <Text style={styles.description}>
-          10 fotos locales, 1 calentamiento + 5 inferencias medidas por foto y modelo.
+          10 fotos locales, 1 calentamiento + 5 inferencias medidas por foto y modelo disponible.
           Requiere un development build; Expo Go no es compatible con LiteRT JSI.
         </Text>
 
@@ -148,12 +148,21 @@ export default function App() {
                 return (
                   <View key={model.id} style={styles.tableRow}>
                     <Text style={[styles.tableCell, styles.mono]}>{model.label}</Text>
-                    <Text style={[styles.tableCell, styles.mono]}>{stats.count}</Text>
-                    <Text style={[styles.tableCell, styles.mono]}>{formatMs(stats.p50_ms)}</Text>
-                    <Text style={[styles.tableCell, styles.mono]}>{formatMs(stats.p95_ms)}</Text>
+                    <Text style={[styles.tableCell, styles.mono]}>{stats?.count ?? 'n/a'}</Text>
+                    <Text style={[styles.tableCell, styles.mono]}>
+                      {stats == null ? 'n/a' : formatMs(stats.p50_ms)}
+                    </Text>
+                    <Text style={[styles.tableCell, styles.mono]}>
+                      {stats == null ? 'n/a' : formatMs(stats.p95_ms)}
+                    </Text>
                   </View>
                 );
               })}
+              {report.model_failures.w8a32 != null && (
+                <Text style={styles.detail}>
+                  w8a32 no disponible: {report.model_failures.w8a32}
+                </Text>
+              )}
               <Text style={styles.detail}>
                 ArUco ID 0: {report.summary.aruco_decoded}/{report.summary.aruco_total}. Backend:{' '}
                 {report.aruco_backend.name}.
@@ -200,7 +209,8 @@ export default function App() {
               </Text>
             </Pressable>
             <Text style={styles.exportHint}>
-              Genera y comparte benchmark_results.json con las 120 corridas crudas, ArUco y mascaras.
+              Genera y comparte benchmark_results.json con las {report.inference_runs.length} corridas
+              crudas, ArUco y mascaras.
             </Text>
           </>
         )}

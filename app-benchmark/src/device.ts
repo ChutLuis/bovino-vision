@@ -27,6 +27,8 @@ export function isGalaxyA25(device: DeviceInfo): boolean {
 
   return (
     /samsung/i.test(vendor) &&
-    (/^sm-a256[a-z0-9-]*$/i.test(modelId) || /(^|\s)galaxy\s+a25(?:\s|$)/i.test(modelName))
+    (/^sm-a256[a-z0-9-]*$/i.test(modelId) ||
+      /^sm-a256[a-z0-9-]*$/i.test(modelName) ||
+      /(^|\s)galaxy\s+a25(?:\s|$)/i.test(modelName))
   );
 }

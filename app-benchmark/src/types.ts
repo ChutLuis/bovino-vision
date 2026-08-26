@@ -88,7 +88,7 @@ export interface TimingStats {
 
 export interface BenchmarkSummary {
   fp32: TimingStats;
-  w8a32: TimingStats;
+  w8a32: TimingStats | null;
   aruco_decoded: number;
   aruco_total: number;
   aruco_decode_rate: number;
@@ -125,6 +125,7 @@ export interface BenchmarkReport {
   inference_runs: InferenceRun[];
   aruco: ArucoMeasurement[];
   segmentation: SegmentationMeasurement[];
+  model_failures: Partial<Record<ModelId, string>>;
   summary: BenchmarkSummary;
 }
 

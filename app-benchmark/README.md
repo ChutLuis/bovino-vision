@@ -156,12 +156,13 @@ npm run start:dev-client
 
 ## Interpretar `benchmark_results.json`
 
-`summary.fp32` y `summary.w8a32` contienen `p50_ms` y `p95_ms` calculados solo con registros `inference_runs` cuyo `phase` es `measured`. La definicion del percentil es interpolacion lineal sobre la muestra ordenada. Los registros `warmup` se exportan para trazabilidad pero no entran en los percentiles.
+`summary.fp32` y, cuando esta disponible, `summary.w8a32` contienen `p50_ms` y `p95_ms` calculados solo con registros `inference_runs` cuyo `phase` es `measured`. Si w8a32 falla durante `runSync()`, la prueba continua con FP32 y `summary.w8a32` es `null`; `model_failures.w8a32` conserva el motivo. La definicion del percentil es interpolacion lineal sobre la muestra ordenada. Los registros `warmup` se exportan para trazabilidad pero no entran en los percentiles.
 
 Campos principales:
 
 - `device`: modelo, Android, ABI y memoria del telefono que produjo el resultado.
 - `inference_runs`: cada `{ device, foto, modelo, phase, run, ms }` crudo.
+- `model_failures`: modelos no disponibles durante la corrida y el motivo reportado por el runtime.
 - `aruco`: cada `{ foto, aruco_ms, decoded, marker_id, corners, marker_side_px }`. Las esquinas estan en coordenadas de la foto original, aunque la deteccion se hizo sobre la copia reescalada.
 - `segmentation`: cada `{ foto, modelo, cow_dets, mask_area_px, postprocess_ms }`. La mascara seleccionada es la vaca de mayor area cuando hay mas de una deteccion; el tiempo de postproceso permite contrastar el presupuesto end-to-end sin contaminar los percentiles de inferencia.
 - `configuration`: documenta clase COCO, umbrales, modelo de letterbox y backend ArUco para la prueba de paridad Python/RN.
@@ -173,7 +174,7 @@ Para comparar areas contra Python, use la misma foto y modelo. Compare `segmenta
 La pantalla muestra `GO` solo cuando se cumplen todos los criterios:
 
 1. El dispositivo identificado es un Samsung Galaxy A25 (`Galaxy A25` o `SM-A256*`).
-2. `w8a32.p50_ms <= 2500` ms.
+2. `w8a32.p50_ms <= 2500` ms o, si w8a32 no puede ejecutar `runSync()`, `fp32.p50_ms <= 2500` ms. El JSON conserva el fallo de w8a32 en `model_failures`.
 3. ArUco ID 0 se decodifica en al menos 9 de las 10 fotos.
 4. `Exportar JSON` abre el intent de compartir sin error.
 

@@ -11,7 +11,7 @@ import {
   MARKER_ID,
   MARKER_SIZE_CM,
   MEASURED_RUNS,
-  W8A32_GO_P50_MS,
+  SEGMENTATION_GO_P50_MS,
   WARMUP_RUNS,
 } from './config';
 import { detectAruco } from './aruco';
@@ -27,6 +27,7 @@ import type {
   Criterion,
   ExportState,
   InferenceRun,
+  ModelId,
   SegmentationMeasurement,
   Verdict,
 } from './types';
@@ -42,10 +43,12 @@ export async function runBenchmark(
   const startedAt = new Date().toISOString();
   const device = collectDeviceInfo();
   const loadedModels: LoadedModel[] = [];
+  const modelFailures: Partial<Record<ModelId, string>> = {};
+  let total = PHOTOS.length * (MODELS.length + 1);
 
   onProgress({
     completed: 0,
-    total: PHOTOS.length * (MODELS.length + 1),
+    total,
     phase: 'Cargando modelos LiteRT',
   });
 
@@ -59,10 +62,10 @@ export async function runBenchmark(
   const inferenceRuns: InferenceRun[] = [];
   const aruco: ArucoMeasurement[] = [];
   const segmentation: SegmentationMeasurement[] = [];
-  const total = PHOTOS.length * (loadedModels.length + 1);
   let completed = 0;
 
-  for (const photo of PHOTOS) {
+  for (let photoIndex = 0; photoIndex < PHOTOS.length; photoIndex += 1) {
+    const photo = PHOTOS[photoIndex];
     onProgress({
       completed,
       total,
@@ -85,6 +88,10 @@ export async function runBenchmark(
     const input = asArrayBuffer(prepared.input);
 
     for (const loaded of loadedModels) {
+      if (modelFailures[loaded.definition.id] != null) {
+        continue;
+      }
+
       onProgress({
         completed,
         total,
@@ -93,56 +100,78 @@ export async function runBenchmark(
         model: loaded.definition.id,
       });
 
-      for (let run = 0; run < WARMUP_RUNS; run += 1) {
-        const started = performance.now();
-        loaded.model.runSync([input]);
-        inferenceRuns.push({
-          device: deviceLabel(device),
-          foto: photo.id,
-          modelo: loaded.definition.id,
-          phase: 'warmup',
-          run,
-          ms: roundMs(performance.now() - started),
+      try {
+        for (let run = 0; run < WARMUP_RUNS; run += 1) {
+          const started = performance.now();
+          loaded.model.runSync([input]);
+          inferenceRuns.push({
+            device: deviceLabel(device),
+            foto: photo.id,
+            modelo: loaded.definition.id,
+            phase: 'warmup',
+            run,
+            ms: roundMs(performance.now() - started),
+          });
+        }
+
+        let outputs: ArrayBuffer[] | null = null;
+        for (let run = 1; run <= MEASURED_RUNS; run += 1) {
+          const started = performance.now();
+          outputs = loaded.model.runSync([input]);
+          inferenceRuns.push({
+            device: deviceLabel(device),
+            foto: photo.id,
+            modelo: loaded.definition.id,
+            phase: 'measured',
+            run,
+            ms: roundMs(performance.now() - started),
+          });
+        }
+
+        if (outputs == null) {
+          throw new Error('La inferencia medida no produjo salidas.');
+        }
+
+        const postprocessStarted = performance.now();
+        const segmentationMeasurement = measureSegmentation(
+          outputs,
+          prepared.letterbox,
+          photo.id,
+          loaded.definition.id,
+        );
+        segmentation.push({
+          ...segmentationMeasurement,
+          postprocess_ms: roundMs(performance.now() - postprocessStarted),
+        });
+        completed += 1;
+        onProgress({
+          completed,
+          total,
+          phase: 'Modelo completado',
+          photo: photo.label,
+          model: loaded.definition.id,
+        });
+      } catch (cause) {
+        const failureMessage = toErrorMessage(cause);
+        if (
+          loaded.definition.id !== 'w8a32' ||
+          !failureMessage.startsWith('TfliteModel.runSync(')
+        ) {
+          throw cause;
+        }
+
+        modelFailures[loaded.definition.id] = failureMessage;
+        total -= PHOTOS.length - photoIndex - 1;
+        completed += 1;
+        onProgress({
+          completed,
+          total,
+          phase: 'Modelo no disponible',
+          photo: photo.label,
+          model: loaded.definition.id,
         });
       }
 
-      let outputs: ArrayBuffer[] | null = null;
-      for (let run = 1; run <= MEASURED_RUNS; run += 1) {
-        const started = performance.now();
-        outputs = loaded.model.runSync([input]);
-        inferenceRuns.push({
-          device: deviceLabel(device),
-          foto: photo.id,
-          modelo: loaded.definition.id,
-          phase: 'measured',
-          run,
-          ms: roundMs(performance.now() - started),
-        });
-      }
-
-      if (outputs == null) {
-        throw new Error('La inferencia medida no produjo salidas.');
-      }
-
-      const postprocessStarted = performance.now();
-      const segmentationMeasurement = measureSegmentation(
-        outputs,
-        prepared.letterbox,
-        photo.id,
-        loaded.definition.id,
-      );
-      segmentation.push({
-        ...segmentationMeasurement,
-        postprocess_ms: roundMs(performance.now() - postprocessStarted),
-      });
-      completed += 1;
-      onProgress({
-        completed,
-        total,
-        phase: 'Modelo completado',
-        photo: photo.label,
-        model: loaded.definition.id,
-      });
       await yieldToUi();
     }
   }
@@ -182,13 +211,15 @@ export async function runBenchmark(
     inference_runs: inferenceRuns,
     aruco,
     segmentation,
+    model_failures: modelFailures,
     summary: {
       fp32: timingStats(
         measured.filter((run) => run.modelo === 'fp32').map((run) => run.ms),
       ),
-      w8a32: timingStats(
-        measured.filter((run) => run.modelo === 'w8a32').map((run) => run.ms),
-      ),
+      w8a32:
+        modelFailures.w8a32 == null
+          ? timingStats(measured.filter((run) => run.modelo === 'w8a32').map((run) => run.ms))
+          : null,
       aruco_decoded: arucoDecoded,
       aruco_total: aruco.length,
       aruco_decode_rate: aruco.length === 0 ? 0 : arucoDecoded / aruco.length,
@@ -201,6 +232,9 @@ export function evaluateVerdict(
   exportState: ExportState,
 ): Verdict {
   const targetDevice = isGalaxyA25(report.device);
+  const usesFp32Fallback = report.summary.w8a32 == null;
+  const segmentationModel = usesFp32Fallback ? 'fp32' : 'w8a32';
+  const segmentationStats = report.summary.w8a32 ?? report.summary.fp32;
   const criteria: Criterion[] = [
     {
       name: 'Dispositivo objetivo',
@@ -210,9 +244,11 @@ export function evaluateVerdict(
         : `Resultado no válido para GO: se detectó ${deviceLabel(report.device)} en vez de un Galaxy A25.`,
     },
     {
-      name: 'Segmentación w8a32 p50',
-      passed: report.summary.w8a32.p50_ms <= W8A32_GO_P50_MS,
-      detail: `p50 ${report.summary.w8a32.p50_ms.toFixed(1)} ms; límite ${W8A32_GO_P50_MS} ms.`,
+      name: `Segmentación ${segmentationModel} p50`,
+      passed: segmentationStats.p50_ms <= SEGMENTATION_GO_P50_MS,
+      detail: usesFp32Fallback
+        ? `w8a32 no disponible: ${report.model_failures.w8a32}. FP32 p50 ${segmentationStats.p50_ms.toFixed(1)} ms; límite ${SEGMENTATION_GO_P50_MS} ms.`
+        : `p50 ${segmentationStats.p50_ms.toFixed(1)} ms; límite ${SEGMENTATION_GO_P50_MS} ms.`,
     },
     {
       name: 'Decodificación ArUco ID 0',
@@ -243,6 +279,10 @@ function deviceLabel(reportDevice: BenchmarkReport['device']): string {
 
 function roundMs(value: number): number {
   return Math.round(value * 1000) / 1000;
+}
+
+function toErrorMessage(cause: unknown): string {
+  return cause instanceof Error ? cause.message : String(cause);
 }
 
 function yieldToUi(): Promise<void> {

@@ -46,6 +46,47 @@ la .pt no; redimensionar sin recortar el padding aplasta la silueta). Corregido 
 recorte, la paridad real es 0.98. Lección idéntica a la de escala ArUco: primero
 audita el instrumento de medición, después juzga al modelo.
 
+### Resultados del spike — etapa 2: benchmark en dispositivo (26 ago 2026, Galaxy A25)
+Corrida completa exportada (`benchmark_results.json`, app-benchmark): 10 fotos de
+campo, 1 warmup + 5 corridas medidas por foto.
+
+| Métrica | Resultado | Criterio | Veredicto |
+|---|---|---|---|
+| Segmentación FP32 (p50 / p95) | **449 / 466 ms** | ≤ 2,500 ms | **GO (margen 5.5×)** |
+| Segmentación w8a32 | falla en primer `runSync()` | — | fallback FP32 pre-autorizado |
+| ArUco (js-aruco2) decodificación | 10/10 | ≥ 9/10 | GO |
+| ArUco paridad de escala vs OpenCV subpíxel | **+1.2% medio / +2.2% máx, sesgo sistemático** | ≤ 1% | **FALLA — en corrección** |
+| Flujo total estimado (seg + ArUco + postproceso) | ~1.4 s | ≤ 3 s (RNF-02) | GO |
+
+**Decisión D3 confirmada por evidencia:** React Native + LiteRT es viable en el
+dispositivo objetivo. Referencia cruzada: el Jetson Orin Nano (GPU, 40 TOPS) hacía
+el pipeline completo en 266 ms; un teléfono de gama media lo hace en ~1.4 s en CPU
+— suficiente para captura foto-por-animal y argumento definitivo contra la
+arquitectura cliente-servidor.
+
+**w8a32:** el artefacto valida en el intérprete de escritorio (IoU 0.983 vs .pt)
+pero falla en el runtime móvil (LiteRT 1.4.0 / react-native-fast-tflite 3.0.1).
+Causa raíz no diagnosticada por decisión de alcance: FP32 (12 MB) cumple el
+requerimiento con margen. Reabrir solo con: (1) prueba con `benchmark_model` CLI
+oficial de LiteRT vía adb (discrimina librería vs wrapper), (2) instrumentación
+del status de `TfLiteTensorCopyFromBuffer` en el wrapper, (3) identificación del
+tensor 295.
+
+**Paridad ArUco (`pipeline/src/eval_aruco_parity.py`):** js-aruco2 midió el marcador
+sistemáticamente más chico que OpenCV subpíxel en las 10 fotos (mismo signo) →
+escala +1.2%, área +2.4% media (máx +4.4%) → sesgo de peso ~+1.7%. Diagnóstico:
+detección a 960 px con esquinas de precisión entera sobre un marcador de 55–64 px
+(fotos WhatsApp de 1280 px). Dos mitigaciones en evaluación: (a) detectar a
+resolución completa — en producción la cámara nativa da marcadores de 180–250 px,
+donde ±1 px ≈ 0.5% de escala; (b) si no basta, refinamiento subpíxel propio o
+módulo nativo OpenCV mínimo. **Principio documentado: coherencia instrumental** —
+el modelo de peso se ajustó con áreas medidas por OpenCV; producción debe medir
+con precisión equivalente o re-calibrar los coeficientes con el instrumento final.
+
+**Hallazgo de benchmark vs intuición:** el orden de rechazos asumido ("ArUco
+barato primero") resultó invertido en el A25: segmentación 449 ms < ArUco 830 ms.
+El orden definitivo del flujo se fija con los números de la iteración final.
+
 ## D2 — Almacenamiento productivo: **SQLite (Room) + almacenamiento privado de la app**
 
 - Base de datos: Room (SQLite) — tablas `animal` (arete, nombre, categoría) y

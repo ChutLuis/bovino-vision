@@ -90,5 +90,8 @@ export function letterboxToNchw(image: DecodedImage): PreparedImage {
 }
 
 export function asArrayBuffer(values: Float32Array): ArrayBuffer {
-  return values.buffer as ArrayBuffer;
+  return values.buffer.slice(
+    values.byteOffset,
+    values.byteOffset + values.byteLength,
+  ) as ArrayBuffer;
 }
