@@ -11,7 +11,13 @@ Dispositivo de validación mínima: **Samsung Galaxy A25** (Exynos 1280, 6 GB RA
 dedicada aprovechable). Si cumple RNF-02 (≤ 3 s/foto) ahí, cumple en el parque real
 de teléfonos del usuario objetivo.
 
-## D1 — Formato de ejecución del modelo: **TFLite (LiteRT), FP16**
+## D1 — Formato de ejecución del modelo: **LiteRT FP32** (decisión final)
+
+**Evolución documentada:** v0.1 eligió "TFLite FP16" → la etapa 1 del spike reveló
+que Ultralytics 8.4 ya no ofrece FP16 en LiteRT (opciones: FP32, INT8, w8a32) →
+la etapa 2 mostró que w8a32 falla en el runtime móvil → **FP32 (12 MB) es la
+decisión final**, validada en el A25 con margen 5.5× sobre el umbral de latencia.
+La tabla siguiente conserva el análisis original (v0.1) como registro histórico:
 
 | Opción | Veredicto | Razón |
 |---|---|---|
@@ -128,7 +134,7 @@ El orden definitivo del flujo se fija con los números de la iteración final.
 - `versión_modelo` en cada estimación: trazabilidad de qué modelo produjo qué peso
   (si el modelo se actualiza, el historial no miente).
 
-## D3 — Stack de la app: **React Native (candidato), sujeto a spike de validación**
+## D3 — Stack de la app: **React Native — CONFIRMADO por el spike (GO, 26 ago 2026)**
 
 **Decisión revisada tras análisis (v0.2).** Criterios: el núcleo de inferencia
 (TFLite) corre en C++ nativo vía JSI en ambos stacks → rendimiento del modelo
@@ -139,7 +145,7 @@ tipo "mirroring"). La competencia del desarrollador es un factor de riesgo
 de ingeniería legítimo (metodología, corr. 4).
 
 - **UI/lógica:** React Native + react-native-vision-camera (captura y feedback en vivo).
-- **Inferencia:** react-native-fast-tflite (JSI) con el modelo TFLite FP16 de D1.
+- **Inferencia:** react-native-fast-tflite (JSI) con el modelo LiteRT FP32 de D1.
 - **ArUco (único riesgo técnico del stack):** tres alternativas, decide el spike:
   1. `react-native-fast-opencv` (JSI) si expone el módulo aruco.
   2. Módulo nativo propio mínimo: solo `objdetect/aruco` de OpenCV, una función
@@ -185,16 +191,19 @@ Cada clase de `vision/` y `estimation/` es espejo 1:1 de un módulo Python del
 
 ## Flujo foto → peso (base del diagrama de secuencia, corr. 9)
 
-1. `CapturaScreen` → CameraX entrega frame/foto.
-2. `EstimarPesoUseCase` invoca `ArucoScale`: sin marcador legible → **rechazo con causa** (RF-07).
-3. `Segmenter` (TFLite): sin vaca con confianza ≥ 0.5 → rechazo con causa.
+1. Pantalla de captura (react-native-vision-camera) entrega la foto.
+2. `Segmenter` (LiteRT FP32): sin vaca con confianza ≥ 0.5 → **rechazo con causa** (RF-07).
+3. `ArucoScale` (js-aruco2, resolución completa): sin marcador legible → rechazo con causa.
 4. `Morphometry`: máscara + escala cm/px → área lateral (cm²), longitud, altura.
 5. `WeightModel`: área → peso ± intervalo (95%).
-6. `ResultadoScreen`: peso + overlay de silueta sobre la foto (RF-06).
-7. Usuario confirma animal (arete) → `EstimacionDao.insert()` → historial actualizado.
+6. Pantalla de resultado: peso + overlay de silueta sobre la foto (RF-06).
+7. Usuario confirma animal (arete) → SQLite insert → historial actualizado.
 
-Tiempo objetivo total en A25: ≤ 3 s (RNF-02). Presupuesto estimado: segmentación
-1.5–2.5 s (TFLite FP16 CPU), ArUco < 300 ms, resto despreciable.
+**Orden de rechazos fijado por el benchmark** (no por intuición): la segmentación
+(0.45 s) es más barata que ArUco (1.4 s) en el A25, así que se falla-rápido con
+la vaca antes de pagar el marcador — inverso al supuesto original de v0.1.
+Tiempo total medido en A25: **~2.0 s** ≤ 3 s (RNF-02 ✓); cold start 3.97 s →
+precargar el modelo al abrir la app.
 
 ## Fuera del APK (se queda en `pipeline/`, PC)
 Anotación de máscaras, fine-tuning, ajuste alométrico, evaluaciones estadísticas,

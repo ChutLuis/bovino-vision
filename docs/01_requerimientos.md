@@ -47,9 +47,9 @@ pesaje rentado (≈ Q2,000).
 | ID | Requerimiento | Métrica verificable |
 |---|---|---|
 | RNF-01 | Operación 100% offline | Ninguna llamada de red en el flujo de estimación |
-| RNF-02 | Tiempo de inferencia aceptable en gama media | ≤ 3 s por foto (referencia: 266 ms en Jetson Orin Nano) |
+| RNF-02 | Tiempo de inferencia aceptable en gama media | ≤ 3 s por foto — **medido en Galaxy A25: ~2.0 s** (segmentación 0.45 s + ArUco full-res 1.4 s + postproceso 0.15 s); cold start 3.97 s mitigado con precarga al abrir la app |
 | RNF-03 | Precisión heredada del modelo validado | MAPE < 10% en condiciones del protocolo de captura (umbral H1a; el piloto midió 7.71% en Jetson — debe re-verificarse en el APK tras exportar/cuantizar el modelo) |
-| RNF-04 | Tamaño de la app razonable para descarga rural | APK ≤ 80 MB (modelo YOLO26n-seg ≈ 10 MB cuantizado) |
+| RNF-04 | Tamaño de la app razonable para descarga rural | APK ≤ 80 MB (modelo YOLO26n-seg LiteRT FP32: 12 MB medidos) |
 | RNF-05 | Compatibilidad | Android 10+ (API 29), sin requerir GPU dedicada |
 | RNF-06 | Privacidad de datos | Todos los datos permanecen en el dispositivo del productor |
 | RNF-07 | Usabilidad rural | Flujo foto→peso en ≤ 3 toques; textos en español; iconografía clara |
