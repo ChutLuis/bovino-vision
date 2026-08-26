@@ -83,6 +83,16 @@ módulo nativo OpenCV mínimo. **Principio documentado: coherencia instrumental*
 el modelo de peso se ajustó con áreas medidas por OpenCV; producción debe medir
 con precisión equivalente o re-calibrar los coeficientes con el instrumento final.
 
+**Paridad de área de segmentación A25 vs PC (misma selección, mayor área, conf 0.5):**
+dif media −0.24%, |máx| 0.72%, sin sesgo sistemático → **PASA el criterio ≤1%**.
+Con esto, la etapa de segmentación queda cerrada de punta a punta: el APK produce
+las mismas áreas que el pipeline validado de la tesis. Sobre la resolución de
+entrada: 640×640 no es una concesión del teléfono — es el punto de operación en
+el que se validó TODO el sistema (el IoU 0.86 y el MAPE 7.71% de la tesis se
+midieron con imgsz=640). Reentrenar/exportar a 960–1280 (≈4× píxeles, ≈4× latencia)
+cambiaría de instrumento sin evidencia de necesidad. Único frente abierto del
+spike: el sesgo de escala ArUco (experimento de resolución completa en curso).
+
 **Hallazgo de benchmark vs intuición:** el orden de rechazos asumido ("ArUco
 barato primero") resultó invertido en el A25: segmentación 449 ms < ArUco 830 ms.
 El orden definitivo del flujo se fija con los números de la iteración final.
