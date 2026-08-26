@@ -169,25 +169,27 @@ Sale un veredicto GO/NO-GO de RN; si NO-GO, fallback a Kotlin (v0.1 de este doc)
 ## Componentes (base del diagrama de componentes, corr. 9)
 
 ```
-app/
-├── ui/            # Compose: CapturaScreen, ResultadoScreen, HistorialScreen, AnimalScreen
-├── camera/        # CameraX: preview + análisis en vivo (marcador ✓ / animal ✓)
-├── vision/
-│   ├── Segmenter.kt        # TFLite: YOLO26n-seg → máscara       (≈ segmenter.py)
-│   ├── ArucoScale.kt       # OpenCV: detección ArUco → cm/px     (≈ aruco.py + calibration.py)
-│   └── Morphometry.kt      # área, longitud, altura desde máscara (≈ morphometry.py)
-├── estimation/
-│   └── WeightModel.kt      # W = a·A^b + intervalo de predicción (≈ train_weight_model.py, solo inferencia)
-├── data/
-│   ├── db/                 # Room: AnimalDao, EstimacionDao
-│   └── export/             # CSV
-└── domain/
-    └── EstimarPesoUseCase.kt  # orquesta el flujo foto → peso
+app/ (React Native + Expo, TypeScript)
+├── src/screens/       # CapturaScreen, ResultadoScreen, HistorialScreen, AnimalScreen
+├── src/camera/        # react-native-vision-camera: preview + feedback en vivo (marcador ✓ / animal ✓)
+├── src/vision/
+│   ├── segmenter.ts       # react-native-fast-tflite (LiteRT FP32) → máscara   (≈ segmenter.py; validado en app-benchmark)
+│   ├── arucoScale.ts      # js-aruco2 a resolución completa → cm/px            (≈ aruco.py + calibration.py; validado en app-benchmark)
+│   └── morphometry.ts     # área, longitud, altura desde máscara               (≈ morphometry.py)
+├── src/estimation/
+│   └── weightModel.ts     # W = a·A^b + intervalo de predicción (coeficientes congelados; golden test en informes/)
+├── src/data/
+│   ├── db/                # expo-sqlite: animales, estimaciones (con versión_modelo)
+│   └── export/            # CSV vía share intent
+└── src/domain/
+    └── estimarPeso.ts     # orquesta el flujo foto → peso (orden de rechazos medido)
 ```
 
-Cada clase de `vision/` y `estimation/` es espejo 1:1 de un módulo Python del
-`pipeline/` — mismo algoritmo, otra plataforma. Ese mapeo es el argumento de
-"el APK ES el prototipo validado, empacado".
+Cada módulo de `src/vision/` y `src/estimation/` es espejo 1:1 de un módulo
+Python del `pipeline/` — mismo algoritmo, otra plataforma — y los de visión ya
+tienen implementación de referencia probada en `app-benchmark/src/`. Ese mapeo
+es el argumento de "el APK ES el prototipo validado, empacado".
+(La estructura Kotlin equivalente de v0.1 quedó descartada junto con D3-Kotlin.)
 
 ## Flujo foto → peso (base del diagrama de secuencia, corr. 9)
 
