@@ -95,6 +95,30 @@ npx eas-cli@latest build --platform android --profile development --local
 
 En Nobara/Fedora, el paquete de sistema correspondiente es normalmente `java-17-openjdk-devel`. El APK se escribe en `build-artifacts/`, que no se versiona.
 
+## Flujo diario Android
+
+Con el A25 conectado por USB, depuración USB autorizada y un JDK 17 instalado, el flujo normal crea/actualiza el development build, lo instala y arranca Metro:
+
+```sh
+cd "/home/luisc/Documents/bovino-vision/app-benchmark"
+source ~/.nvm/nvm.sh && nvm use default
+npm run android
+```
+
+El script busca un JDK 17 en `JDK_17_HOME`, `JAVA_HOME`, las rutas habituales de Nobara/Fedora y SDKMAN. Para una ruta no estándar:
+
+```sh
+export JDK_17_HOME="/ruta/a/jdk-17"
+npm run android
+```
+
+Tras cambios en `app.json` o dependencias nativas, regenere primero el proyecto Android:
+
+```sh
+npm run prebuild:android
+npm run android
+```
+
 ## Estado de verificacion de esta entrega
 
 - TypeScript, prebuild Android y el bundle Android fueron validados localmente.
