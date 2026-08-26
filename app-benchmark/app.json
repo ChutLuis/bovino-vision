@@ -26,6 +26,11 @@
       "expo-dev-client",
       "expo-sharing",
       "react-native-fast-tflite"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "b9da5e96-edf0-49fa-b09d-4c61e1c16f22"
+      }
+    }
   }
 }

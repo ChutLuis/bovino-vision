@@ -74,15 +74,37 @@ npx eas-cli@latest build:configure
 
 No se debe inventar un resultado de este comando: requiere las credenciales de la cuenta EAS y el APK final se debe ejecutar en el Galaxy A25.
 
+## Build EAS local
+
+Para reproducir el perfil `development` en Linux sin subir un build, use `--local`. Requiere un **JDK 17 completo** (incluye `javac`), Android SDK y NDK; un JRE/Java 25 sin `javac` falla al configurar CMake con el mensaje `A restricted method in java.lang.System has been called`.
+
+```sh
+cd "/home/luisc/Documents/bovino-vision/app-benchmark"
+source ~/.nvm/nvm.sh && nvm use default
+
+export JAVA_HOME="/ruta/a/jdk-17"
+export ANDROID_HOME="$HOME/Android/Sdk"
+export ANDROID_SDK_ROOT="$ANDROID_HOME"
+export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
+export EAS_LOCAL_BUILD_ARTIFACTS_DIR="$PWD/build-artifacts"
+
+java -version
+javac -version
+npx eas-cli@latest build --platform android --profile development --local
+```
+
+En Nobara/Fedora, el paquete de sistema correspondiente es normalmente `java-17-openjdk-devel`. El APK se escribe en `build-artifacts/`, que no se versiona.
+
 ## Estado de verificacion de esta entrega
 
 - TypeScript, prebuild Android y el bundle Android fueron validados localmente.
-- No se inicio un build EAS ni se generaron tiempos: eso requiere la cuenta EAS configurada y ejecutar el APK en el Galaxy A25.
-- La compilacion Gradle local requiere un Android SDK instalado. Si se desea hacerla fuera de EAS, configure una ruta real antes de ejecutar el wrapper:
+- El perfil EAS local `development` compilo correctamente con JDK 17 y genero un APK. Aun no se instalaron ni midieron resultados en el Galaxy A25.
+- La compilacion Gradle local requiere JDK 17 y un Android SDK instalado. Si se desea hacerla fuera de EAS, configure rutas reales antes de ejecutar el wrapper:
 
 ```sh
 export ANDROID_HOME="/ruta/al/Android/Sdk"
-export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+export JAVA_HOME="/ruta/a/jdk-17"
+export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
 cd "/home/luisc/Documents/bovino-vision/app-benchmark/android"
 ./gradlew :app:assembleDebug
 ```
