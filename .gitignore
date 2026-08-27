@@ -7,6 +7,7 @@ pipeline/runs/
 # Las imágenes curadas para el repo (corrección 10) van en data/samples/ y SÍ se versionan
 pipeline/data/captures/
 pipeline/data/markers/
+pipeline/data/field/seg_dataset/
 
 # Python
 __pycache__/
