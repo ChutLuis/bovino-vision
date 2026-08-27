@@ -124,6 +124,35 @@ npx expo start --dev-client
 No use Expo Go: `react-native-fast-tflite` es un modulo nativo JSI y requiere
 el development client.
 
+## Debug Rapido En El A25
+
+Wakx replica el comando de desarrollo de `app-benchmark`. Con el A25 conectado
+por USB y la depuracion autorizada, el comando busca un JDK 17 completo,
+configura `ANDROID_HOME` y ejecuta `expo run:android --device` para compilar o
+actualizar el development client, instalarlo y arrancar Metro:
+
+```sh
+cd "/home/luisc/Documents/bovino-vision/app"
+source ~/.nvm/nvm.sh && nvm use default
+npm run android
+```
+
+Para una instalacion de JDK no estandar:
+
+```sh
+export JDK_17_HOME="/ruta/a/jdk-17"
+npm run android
+```
+
+Despues de cambiar `app.json` o una dependencia nativa, sincronice el proyecto
+Android generado y vuelva a ejecutar el mismo comando:
+
+```sh
+source ~/.nvm/nvm.sh && nvm use default
+npm run prebuild:android
+npm run android
+```
+
 ## Build EAS Local Para El A25
 
 Requiere JDK 17 completo con `javac`, Android SDK, NDK y un dispositivo con
@@ -152,6 +181,10 @@ source ~/.nvm/nvm.sh && nvm use default
 npx eas-cli@latest login
 npx eas-cli@latest build:configure
 ```
+
+El perfil `development` ya esta en `eas.json` y coincide con el benchmark. No
+se copia el `projectId` de aquel: `build:configure` debe crear o asociar el
+proyecto EAS propio de Wakx (`com.luisc.wakx`).
 
 El perfil `development` de `eas.json` genera un APK interno. Instalelo y arranque
 Metro asi:

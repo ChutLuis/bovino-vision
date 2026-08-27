@@ -29,11 +29,12 @@
   },
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
+    "android": "bash ./scripts/run-android.sh",
     "ios": "expo start --ios",
     "web": "expo start --web",
     "start:dev-client": "expo start --dev-client",
     "postinstall": "patch-package",
+    "prebuild:android": "expo prebuild --platform android",
     "typecheck": "tsc --noEmit",
     "test:golden": "tsc -p tsconfig.golden.json && node .golden-build/tests/goldenWeightModel.js"
   },

@@ -3,6 +3,7 @@
     "name": "Wakx",
     "slug": "wakx",
     "version": "1.0.0",
+    "scheme": "wakx",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -24,6 +25,7 @@
     },
     "description": "Estimación de peso bovino con una foto — offline",
     "plugins": [
+      "expo-dev-client",
       "expo-sqlite",
       "expo-sharing",
       "react-native-fast-tflite",
