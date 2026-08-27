@@ -1,0 +1,38 @@
+diff --git a/node_modules/js-aruco2/src/aruco.js b/node_modules/js-aruco2/src/aruco.js
+index c0b3546..106e9ed 100644
+--- a/node_modules/js-aruco2/src/aruco.js
++++ b/node_modules/js-aruco2/src/aruco.js
+@@ -30,8 +30,12 @@ References:
+ */
+ 
+ var AR = {};
+-var CV = this.CV || require('./cv').CV;
+-this.AR = AR;
++var CV = require('./cv').CV;
++if (typeof module !== 'undefined') {
++  module.exports.AR = AR;
++} else {
++  this.AR = AR;
++}
+ 
+ AR.DICTIONARIES = {
+   ARUCO: {
+diff --git a/node_modules/js-aruco2/src/cv.js b/node_modules/js-aruco2/src/cv.js
+index 966a3cf..e39992c 100644
+--- a/node_modules/js-aruco2/src/cv.js
++++ b/node_modules/js-aruco2/src/cv.js
+@@ -28,8 +28,12 @@ References:
+   http://incubator.quasimondo.com/processing/fast_blur_deluxe.php
+ */
+ 
+-var CV = CV || {};
+-this.CV = CV;
++var CV = {};
++if (typeof module !== 'undefined') {
++  module.exports.CV = CV;
++} else {
++  this.CV = CV;
++}
+ 
+ CV.Image = function(width, height, data){
+   this.width = width || 0;

@@ -1,0 +1,41 @@
+{
+  "name": "wakx",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "dependencies": {
+    "@react-navigation/native": "^7.3.18",
+    "@react-navigation/native-stack": "^7.18.10",
+    "expo": "~57.0.17",
+    "expo-asset": "~57.0.15",
+    "expo-dev-client": "~57.0.16",
+    "expo-file-system": "~57.0.6",
+    "expo-image-picker": "~57.0.14",
+    "expo-sharing": "~57.0.16",
+    "expo-sqlite": "~57.0.2",
+    "expo-status-bar": "~57.0.1",
+    "jpeg-js": "^0.4.4",
+    "js-aruco2": "^2.0.0",
+    "patch-package": "^8.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-fast-tflite": "^3.0.1",
+    "react-native-nitro-modules": "^0.37.0",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "start:dev-client": "expo start --dev-client",
+    "postinstall": "patch-package",
+    "typecheck": "tsc --noEmit",
+    "test:golden": "tsc -p tsconfig.golden.json && node .golden-build/tests/goldenWeightModel.js"
+  },
+  "private": true
+}

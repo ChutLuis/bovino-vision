@@ -1,0 +1,41 @@
+{
+  "expo": {
+    "name": "Wakx",
+    "slug": "wakx",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.luisc.wakx"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "description": "Estimación de peso bovino con una foto — offline",
+    "plugins": [
+      "expo-sqlite",
+      "expo-sharing",
+      "react-native-fast-tflite",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Wakx usa la camara para estimar el peso bovino.",
+          "photosPermission": "Wakx usa fotos para estimar el peso bovino.",
+          "microphonePermission": false
+        }
+      ],
+      "expo-asset"
+    ]
+  }
+}

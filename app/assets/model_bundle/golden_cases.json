@@ -1,0 +1,59 @@
+{
+  "modelo": "alometrico",
+  "a": 0.375,
+  "b": 0.706,
+  "tolerancia_kg": 0.01,
+  "fuente": "benchmark_a25_20260826_fullres.json",
+  "casos": [
+    {
+      "foto": "01_camelia",
+      "area_cm2": 15137.75,
+      "peso_esperado_kg": 335.08
+    },
+    {
+      "foto": "02_paulina",
+      "area_cm2": 14631.9,
+      "peso_esperado_kg": 327.14
+    },
+    {
+      "foto": "03_nohelia",
+      "area_cm2": 14944.85,
+      "peso_esperado_kg": 332.06
+    },
+    {
+      "foto": "04_ford",
+      "area_cm2": 14591.22,
+      "peso_esperado_kg": 326.5
+    },
+    {
+      "foto": "05_karina",
+      "area_cm2": 14777.56,
+      "peso_esperado_kg": 329.44
+    },
+    {
+      "foto": "06_selena",
+      "area_cm2": 17289.09,
+      "peso_esperado_kg": 368.04
+    },
+    {
+      "foto": "07_chiquita",
+      "area_cm2": 15365.17,
+      "peso_esperado_kg": 338.63
+    },
+    {
+      "foto": "08_mafer",
+      "area_cm2": 17061.78,
+      "peso_esperado_kg": 364.62
+    },
+    {
+      "foto": "09_daniela",
+      "area_cm2": 19070.18,
+      "peso_esperado_kg": 394.42
+    },
+    {
+      "foto": "10_mariita",
+      "area_cm2": 22520.05,
+      "peso_esperado_kg": 443.55
+    }
+  ]
+}
