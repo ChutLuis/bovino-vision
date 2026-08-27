@@ -7,6 +7,17 @@ export interface Point {
   y: number;
 }
 
+export interface MascaraVisualFila {
+  y: number;
+  alto: number;
+  tramos: Array<[number, number]>;
+}
+
+// Low-resolution normalized runs for a display-only segmentation overlay.
+export interface MascaraVisual {
+  filas: MascaraVisualFila[];
+}
+
 export interface LetterboxMeta {
   original_width: number;
   original_height: number;

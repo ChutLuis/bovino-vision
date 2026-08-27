@@ -7,19 +7,32 @@ import {
   MASK_CHANNELS,
   MASK_SIZE,
 } from './config';
-import type { LetterboxMeta, SegmentationMeasurement } from './types';
+import type {
+  LetterboxMeta,
+  MascaraVisual,
+  MascaraVisualFila,
+  SegmentationMeasurement,
+} from './types';
 
 interface Candidate {
   offset: number;
   confidence: number;
 }
 
+interface ResultadoSegmentacion {
+  medida: Omit<SegmentationMeasurement, 'postprocess_ms' | 'cm_per_px' | 'area_cm2'>;
+  overlay_mascara: MascaraVisual | null;
+}
+
+const MASCARA_VISUAL_COLUMNAS = 64;
+const MASCARA_VISUAL_FILAS = 48;
+
 export function measureSegmentation(
   outputBuffers: ArrayBuffer[],
   letterbox: LetterboxMeta,
   foto: string,
   modelo: SegmentationMeasurement['modelo'],
-): Omit<SegmentationMeasurement, 'postprocess_ms' | 'cm_per_px' | 'area_cm2'> {
+): ResultadoSegmentacion {
   const detections = new Float32Array(outputBuffers[0]);
   const prototypes = new Float32Array(outputBuffers[1]);
 
@@ -50,16 +63,23 @@ export function measureSegmentation(
   }
 
   return {
-    foto,
-    modelo,
-    cow_dets: candidates.length,
-    mask_area_px: largestArea,
-    selected_confidence: selected?.confidence ?? null,
-    selected_bbox_original_px:
+    medida: {
+      foto,
+      modelo,
+      cow_dets: candidates.length,
+      mask_area_px: largestArea,
+      selected_confidence: selected?.confidence ?? null,
+      selected_bbox_original_px:
+        selected == null
+          ? null
+          : boxInOriginalPixels(detections, selected.offset, letterbox),
+      mask_selection: 'largest_area_cow',
+    },
+    // The measurement path above stays intact; this second, selected-only pass is visual evidence.
+    overlay_mascara:
       selected == null
         ? null
-        : boxInOriginalPixels(detections, selected.offset, letterbox),
-    mask_selection: 'largest_area_cow',
+        : construirMascaraVisual(detections, prototypes, selected.offset, letterbox),
   };
 }
 
@@ -152,6 +172,132 @@ function areaInOriginalPixels(
   }
 
   return area;
+}
+
+function construirMascaraVisual(
+  detections: Float32Array,
+  prototypes: Float32Array,
+  detectionOffset: number,
+  letterbox: LetterboxMeta,
+): MascaraVisual {
+  const logits = new Float32Array(MASK_SIZE * MASK_SIZE);
+  const coefficientOffset = detectionOffset + 6;
+
+  for (let channel = 0; channel < MASK_CHANNELS; channel += 1) {
+    const coefficient = detections[coefficientOffset + channel];
+    const prototypeOffset = channel * MASK_SIZE * MASK_SIZE;
+    for (let pixel = 0; pixel < logits.length; pixel += 1) {
+      logits[pixel] += coefficient * prototypes[prototypeOffset + pixel];
+    }
+  }
+
+  const x0 = Math.max(0, Math.floor((detections[detectionOffset] * MASK_SIZE) / INPUT_SIZE));
+  const y0 = Math.max(0, Math.floor((detections[detectionOffset + 1] * MASK_SIZE) / INPUT_SIZE));
+  const x1 = Math.min(
+    MASK_SIZE,
+    Math.ceil((detections[detectionOffset + 2] * MASK_SIZE) / INPUT_SIZE),
+  );
+  const y1 = Math.min(
+    MASK_SIZE,
+    Math.ceil((detections[detectionOffset + 3] * MASK_SIZE) / INPUT_SIZE),
+  );
+  const filas: MascaraVisualFila[] = [];
+
+  for (let fila = 0; fila < MASCARA_VISUAL_FILAS; fila += 1) {
+    const [inicioY, finalY] = rangoPrototipo(
+      fila,
+      MASCARA_VISUAL_FILAS,
+      letterbox.pad_y,
+      letterbox.content_height,
+    );
+    const tramos: Array<[number, number]> = [];
+    let inicioTramo: number | null = null;
+
+    for (let columna = 0; columna < MASCARA_VISUAL_COLUMNAS; columna += 1) {
+      const [inicioX, finalX] = rangoPrototipo(
+        columna,
+        MASCARA_VISUAL_COLUMNAS,
+        letterbox.pad_x,
+        letterbox.content_width,
+      );
+      const ocupada = bloqueTieneMascara(
+        logits,
+        inicioX,
+        finalX,
+        inicioY,
+        finalY,
+        x0,
+        x1,
+        y0,
+        y1,
+      );
+
+      if (ocupada && inicioTramo == null) {
+        inicioTramo = columna;
+      }
+
+      if (!ocupada && inicioTramo != null) {
+        tramos.push([inicioTramo / MASCARA_VISUAL_COLUMNAS, columna / MASCARA_VISUAL_COLUMNAS]);
+        inicioTramo = null;
+      }
+    }
+
+    if (inicioTramo != null) {
+      tramos.push([inicioTramo / MASCARA_VISUAL_COLUMNAS, 1]);
+    }
+
+    if (tramos.length > 0) {
+      filas.push({
+        y: fila / MASCARA_VISUAL_FILAS,
+        alto: 1 / MASCARA_VISUAL_FILAS,
+        tramos,
+      });
+    }
+  }
+
+  return { filas };
+}
+
+function rangoPrototipo(
+  indice: number,
+  total: number,
+  padding: number,
+  contenido: number,
+): [number, number] {
+  const inicio640 = padding + (indice * contenido) / total;
+  const final640 = padding + ((indice + 1) * contenido) / total;
+  return [
+    Math.max(0, Math.floor((inicio640 * MASK_SIZE) / INPUT_SIZE)),
+    Math.min(MASK_SIZE, Math.ceil((final640 * MASK_SIZE) / INPUT_SIZE)),
+  ];
+}
+
+function bloqueTieneMascara(
+  logits: Float32Array,
+  inicioX: number,
+  finalX: number,
+  inicioY: number,
+  finalY: number,
+  x0: number,
+  x1: number,
+  y0: number,
+  y1: number,
+): boolean {
+  const xInicio = Math.max(inicioX, x0);
+  const xFinal = Math.min(finalX, x1);
+  const yInicio = Math.max(inicioY, y0);
+  const yFinal = Math.min(finalY, y1);
+
+  for (let y = yInicio; y < yFinal; y += 1) {
+    const rowOffset = y * MASK_SIZE;
+    for (let x = xInicio; x < xFinal; x += 1) {
+      if (logits[rowOffset + x] > 0) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 function boxInOriginalPixels(

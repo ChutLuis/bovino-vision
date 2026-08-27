@@ -1,4 +1,4 @@
-import type { Point } from '../vision/types';
+import type { MascaraVisual, Point } from '../vision/types';
 
 export type CausaRechazo = 'sin_vaca' | 'sin_marcador' | 'marcador_ilegible';
 
@@ -24,6 +24,7 @@ export interface EstimacionExitosa {
   peso_kg: number;
   area_cm2: number;
   mascara: MascaraDisponible;
+  overlay_mascara: MascaraVisual | null;
   esquinas_marcador: Point[];
   version_modelo: string;
   cm_per_px: number;

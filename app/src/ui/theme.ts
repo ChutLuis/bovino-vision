@@ -1,0 +1,85 @@
+// Wakx visual tokens for the Campo y maiz direction.
+export const colors = {
+  bosque: '#17301e',
+  bosqueCamara: '#0d1f13',
+  bosqueProfundo: '#08170f',
+  bosquePozo: '#0f2416',
+  verdeMedio: '#2f5c3b',
+  verdeTinta: '#1d3a26',
+  verdeNombre: '#23301f',
+  salvia: '#9dbfa0',
+  salviaTenue: '#6f8f74',
+  crema: '#f6f1e3',
+  cremaFondo: '#f0ead9',
+  tarjeta: '#fffdf6',
+  bordeTarjeta: '#e2d9c4',
+  textoClaroSec: '#d9d2bd',
+  textoClaroTer: '#c9c2ad',
+  textoRechazo: '#e6dfca',
+  grisCalido: '#7d7460',
+  tierra: '#7a5230',
+  chipClaro: '#eee3cb',
+  maiz: '#ffc226',
+  maizSombra: '#cf9a12',
+  mascara: '#58d06b',
+  error: '#b3402a',
+  overlayProcesando: 'rgba(13,31,19,0.9)',
+  overlayProcesandoLigero: 'rgba(13,31,19,0.34)',
+  overlayRechazo: 'rgba(24,20,12,0.88)',
+  guia: 'rgba(255,255,255,0.95)',
+  guiaSuelo: 'rgba(255,255,255,0.55)',
+  bosqueInstruccion: 'rgba(13,31,19,0.82)',
+  bosqueEtiqueta: 'rgba(13,31,19,0.78)',
+  maizHalo: 'rgba(255,194,38,0.55)',
+  anilloDisparador: 'rgba(23,48,30,0.35)',
+  cremaPendiente: 'rgba(246,241,227,0.3)',
+  cremaTarjetaBorde: 'rgba(246,241,227,0.25)',
+  cremaTarjetaFondo: 'rgba(246,241,227,0.1)',
+  bordeClaro: 'rgba(246,241,227,0.22)',
+  focoVaca: 'rgba(185,216,174,0.95)',
+  ripplePrimario: 'rgba(23,48,30,0.14)',
+  rippleSecundario: 'rgba(47,92,59,0.12)',
+  rippleTarjeta: 'rgba(47,92,59,0.08)',
+  rippleSalvia: 'rgba(157,191,160,0.18)',
+} as const;
+
+export const font = {
+  regular: 'Rubik_400Regular',
+  medium: 'Rubik_500Medium',
+  bold: 'Rubik_700Bold',
+  black: 'Rubik_900Black',
+} as const;
+
+export const type = {
+  pesoGigante: { fontFamily: font.black, fontSize: 104, letterSpacing: -3, lineHeight: 104 },
+  display: { fontFamily: font.black, fontSize: 64, letterSpacing: -1 },
+  titulo: { fontFamily: font.black, fontSize: 32 },
+  botonPrimario: { fontFamily: font.black, fontSize: 25 },
+  botonSecundario: { fontFamily: font.bold, fontSize: 23 },
+  cuerpo: { fontFamily: font.regular, fontSize: 20, lineHeight: 27 },
+  cuerpoMedio: { fontFamily: font.medium, fontSize: 20, lineHeight: 27 },
+  secundario: { fontFamily: font.regular, fontSize: 16 },
+  overline: {
+    fontFamily: font.bold,
+    fontSize: 16,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+  },
+} as const;
+
+export const radius = {
+  cta: 20,
+  secundario: 20,
+  tarjeta: 20,
+  chip: 10,
+  input: 14,
+  guiaMarcador: 8,
+} as const;
+
+export const size = {
+  ctaAlto: 74,
+  secundarioAlto: 66,
+  disparador: 94,
+  botonAux: 58,
+  tactilMinimo: 44,
+} as const;

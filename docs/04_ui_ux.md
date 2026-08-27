@@ -1,7 +1,9 @@
 # UI/UX del APK — Definición v1 y brief de diseño
 **Correcciones atendidas: #2 (producto final), #6 (producto funcional)**
-Estado: v0.1 — alcance mínimo acordado; nombre de la app pendiente de decisión
-(candidatos: Wakx / Wakxalal (verificar con hablante kaqchikel) / EstiVac / BoviMetro)
+Estado: v0.2 — alcance mínimo acordado.
+**Nombre decidido (27 ago 2026): Wakx** — "vaca" en kaqchikel, subtítulo
+"Estimación de peso bovino". Corto, pronunciable, con identidad guatemalteca
+coherente con el usuario objetivo del proyecto.
 
 ## Alcance v1 (decidido 26 ago 2026)
 - SIN feedback en vivo durante la cámara (frame processors quedan para v1.1).
@@ -69,7 +71,9 @@ Mensajes en lenguaje de corral, cada uno con acción correctiva:
 > (4) rechazo: mensaje claro de qué salió mal y cómo corregirlo, botón Volver a
 > tomar; (5) historial: lista simple de animales y sus pesos con fechas.
 > Paleta sugerida: verdes de campo + tierra, acentos de alta visibilidad.
-> El nombre de la app es [NOMBRE] con subtítulo "Estimación de peso bovino".
+> El nombre de la app es "Wakx" ("vaca" en kaqchikel) con subtítulo "Estimación
+> de peso bovino". El logo/ícono puede jugar con la silueta lateral de una vaca
+> y/o el patrón cuadrado del marcador ArUco.
 
 ## Contrato de artefactos congelados (pipeline → APK)
 El APK consume un paquete versionado generado por `pipeline/`:

@@ -27,12 +27,13 @@ export async function estimarPeso(
   const salidas = await dependencias.modelo_segmentacion.run([
     asArrayBuffer(preparada.input),
   ]);
-  const segmentacion = measureSegmentation(
+  const resultadoSegmentacion = measureSegmentation(
     salidas,
     preparada.letterbox,
     foto.uri,
     'fp32',
   );
+  const segmentacion = resultadoSegmentacion.medida;
 
   if (
     segmentacion.cow_dets === 0 ||
@@ -68,6 +69,7 @@ export async function estimarPeso(
       area_px: segmentacion.mask_area_px,
       bbox_original_px: segmentacion.selected_bbox_original_px,
     },
+    overlay_mascara: resultadoSegmentacion.overlay_mascara,
     esquinas_marcador: marcador.corners,
     version_modelo: dependencias.modelo_peso.version,
     cm_per_px: marcador.cm_per_px,

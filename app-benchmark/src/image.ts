@@ -18,8 +18,8 @@ export async function decodeBundledJpeg(assetModule: number): Promise<DecodedIma
     useTArray: true,
     formatAsRGBA: true,
     tolerantDecoding: true,
-    maxResolutionInMP: 20,
-    maxMemoryUsageInMB: 128,
+    maxResolutionInMP: 100,
+    maxMemoryUsageInMB: 512,
   });
 
   return {
