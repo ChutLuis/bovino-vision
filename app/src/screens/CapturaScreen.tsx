@@ -1,4 +1,4 @@
-import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useEffect, useRef, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { StatusBar } from 'expo-status-bar';
@@ -132,7 +132,12 @@ export function CapturaScreen({ navigation, route }: CapturaScreenProps) {
         </Pressable>
       </View>
 
-      <View style={styles.contenido}>
+      <ScrollView
+        contentContainerStyle={{ paddingTop: 28, paddingHorizontal: 20, paddingBottom: 16 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        style={styles.contenido}
+      >
         <Text style={styles.overline}>Antes de tomar la foto</Text>
         <Text style={styles.titulo}>Foto de lado.</Text>
         <Text style={styles.introduccion}>Tomar foto abre la cámara del teléfono.</Text>
@@ -181,7 +186,7 @@ export function CapturaScreen({ navigation, route }: CapturaScreenProps) {
             <Text style={styles.ejemploTextoAbajo}>Cuadro a 3–4 m</Text>
           </View>
         </View>
-      </View>
+      </ScrollView>
 
       <View style={[styles.pie, { paddingBottom: insets.bottom + 16 }]}>
         <BotonPrimario
@@ -292,8 +297,6 @@ const styles = StyleSheet.create({
   },
   contenido: {
     flex: 1,
-    paddingTop: 28,
-    paddingHorizontal: 20,
   },
   overline: {
     color: colors.maiz,
