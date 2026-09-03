@@ -82,7 +82,11 @@ export function OnboardingScreen({ navigation }: OnboardingScreenProps) {
         console.error('No se pudo guardar la bandera del onboarding.', cause);
       })
       .finally(() => {
-        navigation.replace('Captura');
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+        } else {
+          navigation.replace('Captura');
+        }
       });
   }, [navigation]);
 
