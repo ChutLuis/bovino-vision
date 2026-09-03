@@ -16,10 +16,15 @@ import { useEffect, useRef, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { guardarAnimal, guardarEstimacion } from '../data/db/dao';
+import {
+  guardarAnimal,
+  guardarEstimacion,
+  listarAnimales,
+  type AnimalConResumen,
+} from '../data/db/dao';
 import { eliminarFotoPrivada, guardarFotoPrivada } from '../data/photos';
 import type { CausaRechazo, EstimacionExitosa } from '../domain/types';
-import type { ResultadoScreenProps } from '../navigation/types';
+import type { PesadaGuardada, ResultadoScreenProps } from '../navigation/types';
 import type { MascaraVisual, Point } from '../vision/types';
 import { BotonPrimario, BotonSecundario } from '../ui/Botones';
 import { colors, font, radius, type } from '../ui/theme';
@@ -65,8 +70,18 @@ interface PuntoMostrado {
 
 const GROSOR_ARISTA_MARCADOR = 3;
 
+// The margin describes the method, never this animal: deriving it from the
+// weight made a fixed error look like a per-photo measurement (handoff R2).
+const MARGEN_HABITUAL_KG = 13;
+
+function margenHabitualKg(intervalo: unknown): number {
+  return typeof intervalo === 'number' && Number.isFinite(intervalo) && intervalo > 0
+    ? Math.round(intervalo)
+    : MARGEN_HABITUAL_KG;
+}
+
 export function ResultadoScreen({ navigation, route }: ResultadoScreenProps) {
-  const { resultado } = route.params;
+  const { aretePrellenado, resultado } = route.params;
   const insets = useSafeAreaInsets();
 
   if (!resultado.ok) {
@@ -100,29 +115,33 @@ export function ResultadoScreen({ navigation, route }: ResultadoScreenProps) {
 
   return (
     <ResultadoExitoso
+      aretePrellenado={aretePrellenado}
       resultado={resultado}
       onRepetir={() => navigation.popToTop()}
-      onGuardar={() => navigation.replace('Historial')}
+      onGuardar={(guardado) => navigation.replace('Historial', { guardado })}
       insetInferior={insets.bottom}
     />
   );
 }
 
 interface ResultadoExitosoProps {
+  aretePrellenado?: string;
   resultado: EstimacionExitosa;
   onRepetir: () => void;
-  onGuardar: () => void;
+  onGuardar: (guardado: PesadaGuardada) => void;
   insetInferior: number;
 }
 
 function ResultadoExitoso({
+  aretePrellenado,
   resultado,
   onRepetir,
   onGuardar,
   insetInferior,
 }: ResultadoExitosoProps) {
   const insets = useSafeAreaInsets();
-  const [arete, setArete] = useState('');
+  const [arete, setArete] = useState(aretePrellenado ?? '');
+  const [animales, setAnimales] = useState<AnimalConResumen[]>([]);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [areteEnfocado, setAreteEnfocado] = useState(false);
@@ -161,6 +180,24 @@ function ResultadoExitoso({
     return () => {
       showSub.remove();
       hideSub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    let vigente = true;
+    listarAnimales()
+      .then((lista) => {
+        if (vigente) {
+          setAnimales(lista);
+        }
+      })
+      .catch((cause) => {
+        // The tag chips are a shortcut; typing still works if the list fails.
+        console.error('No se pudieron cargar los aretes del historial.', cause);
+      });
+
+    return () => {
+      vigente = false;
     };
   }, []);
 
@@ -219,7 +256,7 @@ function ResultadoExitoso({
         timestamp: new Date().toISOString(),
       });
       estimacionGuardada = true;
-      onGuardar();
+      onGuardar({ arete: arete.trim(), pesoKg: Math.round(resultado.peso_kg) });
     } catch (cause) {
       console.error('No se pudo guardar la pesada.', cause);
       if (rutaFoto != null && !estimacionGuardada) {
@@ -258,7 +295,13 @@ function ResultadoExitoso({
     cajaMarcador != null && tamanoFoto != null
       ? calcularPosicionEtiquetaMarcador(cajaMarcador, cajaMascara, tamanoFoto)
       : null;
-  const infoConfianza = calcularInfoConfianza(resultado.intervalo_modelo, resultado.peso_kg);
+  const margenKg = margenHabitualKg(resultado.intervalo_modelo);
+  const areteNormalizado = arete.trim();
+  const puedeGuardar = areteNormalizado.length > 0;
+  const aretesSugeridos = animales
+    .filter((animal) => animal.arete.startsWith(areteNormalizado))
+    .sort((a, b) => (b.ultima_estimacion ?? '').localeCompare(a.ultima_estimacion ?? ''))
+    .map((animal) => animal.arete);
 
   const actualizarTamanoFoto = ({ nativeEvent }: LayoutChangeEvent): void => {
     const { width, height } = nativeEvent.layout;
@@ -307,12 +350,7 @@ function ResultadoExitoso({
               {`${Math.round(resultado.peso_kg)} kg`}
             </Text>
             <Text style={styles.resumenCompactoPunto}>·</Text>
-            <View style={[styles.chipCompacto, { backgroundColor: infoConfianza.colorBg }]}>
-              <View style={[styles.puntoIntervalo, { backgroundColor: infoConfianza.colorPunto }]} />
-              <Text style={[styles.textoChipCompacto, { color: infoConfianza.colorTexto }]}>
-                {`± ${infoConfianza.margenKg} kg`}
-              </Text>
-            </View>
+            <Text style={styles.resumenCompactoMargen}>{`± ${margenKg} kg`}</Text>
           </View>
           <Pressable
             accessibilityLabel="Ocultar teclado para ver foto completa"
@@ -385,16 +423,8 @@ function ResultadoExitoso({
             <View style={styles.filaPeso}>
               <Text style={styles.peso}>{Math.round(resultado.peso_kg)}</Text>
               <Text style={styles.unidad}>kg</Text>
-              <View style={[styles.chipIntervalo, { backgroundColor: infoConfianza.colorBg }]}>
-                <View style={[styles.puntoIntervalo, { backgroundColor: infoConfianza.colorPunto }]} />
-                <Text style={[styles.textoIntervalo, { color: infoConfianza.colorTexto }]}>
-                  {infoConfianza.etiqueta}
-                </Text>
-              </View>
             </View>
-            <Text style={[styles.notaConfianza, { color: infoConfianza.colorTexto }]}>
-              {infoConfianza.nota}
-            </Text>
+            <Text style={styles.margenMetodo}>{`Margen habitual del método: ± ${margenKg} kg`}</Text>
             <View style={styles.pruebaFoto}>
               <View style={styles.puntoPrueba} />
               <Text style={styles.pruebaDetalle}>Vaca y cuadro ubicados en la foto.</Text>
@@ -426,17 +456,48 @@ function ResultadoExitoso({
               value={arete}
             />
             <Text style={styles.notaTeclado}>Solo números — máx. 6 dígitos</Text>
+            {aretesSugeridos.length > 0 ? (
+              <View style={styles.sugerenciasBloque}>
+                <Text style={styles.sugerenciasEtiqueta}>Ya en el historial (toque para usar):</Text>
+                <ScrollView
+                  contentContainerStyle={styles.sugerenciasFila}
+                  horizontal={true}
+                  keyboardShouldPersistTaps="handled"
+                  showsHorizontalScrollIndicator={false}
+                >
+                  {aretesSugeridos.map((valor) => (
+                    <Pressable
+                      accessibilityLabel={`Usar el arete ${valor}`}
+                      accessibilityRole="button"
+                      android_ripple={{ color: colors.ripplePrimario }}
+                      hitSlop={{ bottom: 2, top: 2 }}
+                      key={valor}
+                      onPress={() => actualizarArete(valor)}
+                      style={({ pressed }) => [
+                        styles.chipArete,
+                        pressed ? styles.chipAretePresionado : undefined,
+                      ]}
+                    >
+                      <Text style={styles.textoChipArete}>{valor}</Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+            ) : null}
             {error != null ? <Text style={styles.errorGuardar}>{error}</Text> : null}
           </View>
 
           <View style={styles.accionesResultado}>
             <BotonPrimario
-              accessibilityLabel="Guardar en historial"
+              accessibilityLabel="Guardar pesada en el historial"
               alto={56}
-              disabled={guardando}
-              titulo={guardando ? 'Guardando...' : 'Guardar pesaje'}
+              disabled={guardando || !puedeGuardar}
+              titulo={guardando ? 'Guardando…' : 'Guardar pesada'}
               onPress={() => void guardar()}
             />
+            {!puedeGuardar && !guardando ? (
+              <Text style={styles.ayudaGuardar}>Escriba el arete para guardar</Text>
+            ) : null}
             <BotonSecundario alto={56} tamanioTexto={20} titulo="Repetir foto" onPress={onRepetir} />
           </View>
         </View>
@@ -784,52 +845,6 @@ function areaSolapamiento(
   return Math.max(0, derecha - izquierda) * Math.max(0, inferior - superior);
 }
 
-interface InfoConfianza {
-  margenKg: number;
-  etiqueta: string;
-  nota: string;
-  colorBg: string;
-  colorTexto: string;
-  colorPunto: string;
-}
-
-function calcularInfoConfianza(intervalo: unknown, pesoKg: number): InfoConfianza {
-  const valor =
-    typeof intervalo === 'number' && Number.isFinite(intervalo) && intervalo > 0
-      ? intervalo
-      : Math.round(pesoKg * 0.035);
-  const margenKg = Math.max(1, Math.round(valor));
-
-  if (margenKg < 10) {
-    return {
-      margenKg,
-      etiqueta: `± ${margenKg} kg`,
-      nota: `Lectura válida · margen estimado ±${margenKg} kg`,
-      colorBg: '#dcefdb',
-      colorTexto: '#1c7a37',
-      colorPunto: '#2b7a3e',
-    };
-  }
-  if (margenKg <= 25) {
-    return {
-      margenKg,
-      etiqueta: `± ${margenKg} kg`,
-      nota: `Lectura válida · margen estimado ±${margenKg} kg`,
-      colorBg: '#f6ebc2',
-      colorTexto: '#8a6a00',
-      colorPunto: '#cf9a12',
-    };
-  }
-  return {
-    margenKg,
-    etiqueta: `± ${margenKg} kg`,
-    nota: 'Margen amplio — recomendable volver a tomar la foto.',
-    colorBg: '#f3d9c2',
-    colorTexto: '#9a4712',
-    colorPunto: '#c8612a',
-  };
-}
-
 const styles = StyleSheet.create({
   resultadoPantalla: {
     flex: 1,
@@ -1053,24 +1068,17 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 26,
   },
+  resumenCompactoMargen: {
+    color: colors.textoClaroSec,
+    fontFamily: font.medium,
+    fontSize: 15,
+    lineHeight: 20,
+  },
   resumenCompactoPunto: {
     color: colors.salviaClara,
     fontFamily: font.bold,
     fontSize: 20,
     lineHeight: 22,
-  },
-  chipCompacto: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: radius.chip,
-  },
-  textoChipCompacto: {
-    fontFamily: font.bold,
-    fontSize: 14,
-    lineHeight: 16,
   },
   botonOcultarTeclado: {
     paddingVertical: 6,
@@ -1119,32 +1127,13 @@ const styles = StyleSheet.create({
     fontSize: 26,
     lineHeight: 32,
   },
-  chipIntervalo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: radius.chip,
-    backgroundColor: colors.chipClaro,
-  },
-  puntoIntervalo: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-  },
-  textoIntervalo: {
-    fontFamily: font.bold,
-    fontSize: 15,
-    lineHeight: 18,
-  },
-  notaConfianza: {
+  margenMetodo: {
     marginTop: 4,
     marginBottom: 4,
-    fontFamily: font.medium,
-    fontSize: 13,
-    lineHeight: 18,
+    color: colors.textoNeutro,
+    fontFamily: font.regular,
+    fontSize: 15,
+    lineHeight: 20,
   },
   pruebaFoto: {
     flexDirection: 'row',
@@ -1210,6 +1199,42 @@ const styles = StyleSheet.create({
     fontFamily: font.regular,
     fontSize: 12,
     lineHeight: 16,
+  },
+  sugerenciasBloque: {
+    gap: 8,
+  },
+  sugerenciasEtiqueta: {
+    color: colors.tierra,
+    fontFamily: font.bold,
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  sugerenciasFila: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingRight: 4,
+  },
+  chipArete: {
+    height: 40,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    backgroundColor: colors.maiz,
+  },
+  chipAretePresionado: {
+    opacity: 0.8,
+  },
+  textoChipArete: {
+    color: colors.bosque,
+    fontFamily: font.black,
+    fontSize: 16,
+  },
+  ayudaGuardar: {
+    color: colors.tierra,
+    fontFamily: font.medium,
+    fontSize: 15,
+    lineHeight: 20,
+    textAlign: 'center',
   },
   errorGuardar: {
     color: colors.error,

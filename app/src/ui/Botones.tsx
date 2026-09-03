@@ -21,14 +21,8 @@ export function BotonPrimario({
   accessibilityLabel,
 }: BotonProps) {
   return (
-    <View
-      style={[
-        styles.primarioContenedor,
-        { height: alto + SOMBRA_OFFSET },
-        disabled ? styles.deshabilitado : undefined,
-      ]}
-    >
-      <View pointerEvents="none" style={styles.sombra} />
+    <View style={[styles.primarioContenedor, { height: alto + SOMBRA_OFFSET }]}>
+      {disabled ? null : <View pointerEvents="none" style={styles.sombra} />}
       <Pressable
         accessibilityLabel={accessibilityLabel ?? titulo}
         accessibilityRole="button"
@@ -38,10 +32,13 @@ export function BotonPrimario({
         style={({ pressed }) => [
           styles.primario,
           { height: alto },
+          disabled ? styles.primarioDeshabilitado : undefined,
           pressed && !disabled ? styles.primarioPresionado : undefined,
         ]}
       >
-        <Text style={styles.textoPrimario}>{titulo}</Text>
+        <Text style={[styles.textoPrimario, disabled ? styles.textoPrimarioDeshabilitado : undefined]}>
+          {titulo}
+        </Text>
       </Pressable>
     </View>
   );
@@ -99,6 +96,13 @@ const styles = StyleSheet.create({
   primarioPresionado: {
     transform: [{ translateY: 2 }],
   },
+  primarioDeshabilitado: {
+    backgroundColor: colors.bordeTarjeta,
+  },
+  textoPrimarioDeshabilitado: {
+    // Handoff R5 fixes this grey literally; it is not part of the palette.
+    color: '#8c8470',
+  },
   textoPrimario: {
     ...type.botonPrimario,
     color: colors.bosque,
@@ -119,6 +123,6 @@ const styles = StyleSheet.create({
     color: colors.verdeMedio,
   },
   deshabilitado: {
-    opacity: 0.6,
+    opacity: 0.7,
   },
 });

@@ -18,6 +18,7 @@ export const colors = {
   textoClaroTer: '#c9c2ad',
   textoRechazo: '#e6dfca',
   grisCalido: '#7d7460',
+  textoNeutro: '#5d6b5f',
   tierra: '#7a5230',
   chipClaro: '#eee3cb',
   maiz: '#ffc226',
