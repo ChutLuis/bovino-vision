@@ -56,7 +56,10 @@ export function ProcesandoScreen({ navigation, route }: ProcesandoScreenProps) {
     })
       .then((resultado) => {
         if (activa) {
-          navigation.replace('Resultado', { resultado });
+          navigation.replace('Resultado', {
+            resultado,
+            aretePrellenado: route.params.aretePrellenado,
+          });
         }
       })
       .catch((cause: unknown) => {
@@ -69,7 +72,13 @@ export function ProcesandoScreen({ navigation, route }: ProcesandoScreenProps) {
     return () => {
       activa = false;
     };
-  }, [modelo_segmentacion, modelo_peso, navigation, route.params.foto]);
+  }, [
+    modelo_segmentacion,
+    modelo_peso,
+    navigation,
+    route.params.aretePrellenado,
+    route.params.foto,
+  ]);
 
   useEffect(() => {
     const animacion = Animated.loop(

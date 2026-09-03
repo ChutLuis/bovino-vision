@@ -7,9 +7,12 @@ export type EtapaProcesamiento =
   | 'leyendo_marcador'
   | 'calculando_peso';
 
+export type OrigenFoto = 'camara' | 'galeria';
+
 export interface FotoEntrada {
   uri: string;
   orientacion_exif?: number | null;
+  origen: OrigenFoto;
 }
 
 export interface MascaraDisponible {

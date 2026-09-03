@@ -14,6 +14,8 @@ export interface AnimalConResumen extends Animal {
   estimaciones_count: number;
   ultimo_peso_kg: number | null;
   ultima_estimacion: string | null;
+  penultimo_peso_kg: number | null;
+  penultima_estimacion: string | null;
 }
 
 export interface NuevaEstimacion {
@@ -118,12 +120,59 @@ export async function listarAnimales(): Promise<AnimalConResumen[]> {
         SELECT timestamp FROM estimacion
         WHERE animal_id = animal.id
         ORDER BY timestamp DESC LIMIT 1
-      ) AS ultima_estimacion
+      ) AS ultima_estimacion,
+      (
+        SELECT peso_kg FROM estimacion
+        WHERE animal_id = animal.id
+        ORDER BY timestamp DESC LIMIT 1 OFFSET 1
+      ) AS penultimo_peso_kg,
+      (
+        SELECT timestamp FROM estimacion
+        WHERE animal_id = animal.id
+        ORDER BY timestamp DESC LIMIT 1 OFFSET 1
+      ) AS penultima_estimacion
     FROM animal
     LEFT JOIN estimacion ON estimacion.animal_id = animal.id
     GROUP BY animal.id
     ORDER BY animal.arete COLLATE NOCASE ASC
   `);
+}
+
+export interface ResultadoBorrado {
+  ruta_foto: string | null;
+  animal_borrado: boolean;
+}
+
+export async function borrarEstimacion(id: number): Promise<ResultadoBorrado> {
+  const db = await obtenerBaseDeDatos();
+  let resultado: ResultadoBorrado = { ruta_foto: null, animal_borrado: false };
+
+  await db.withTransactionAsync(async () => {
+    const estimacion = await db.getFirstAsync<{ animal_id: number; ruta_foto: string }>(
+      'SELECT animal_id, ruta_foto FROM estimacion WHERE id = ?',
+      id,
+    );
+
+    if (estimacion == null) {
+      return;
+    }
+
+    await db.runAsync('DELETE FROM estimacion WHERE id = ?', id);
+
+    const restantes = await db.getFirstAsync<{ total: number }>(
+      'SELECT COUNT(*) AS total FROM estimacion WHERE animal_id = ?',
+      estimacion.animal_id,
+    );
+    const animalVacio = (restantes?.total ?? 0) === 0;
+
+    if (animalVacio) {
+      await db.runAsync('DELETE FROM animal WHERE id = ?', estimacion.animal_id);
+    }
+
+    resultado = { ruta_foto: estimacion.ruta_foto, animal_borrado: animalVacio };
+  });
+
+  return resultado;
 }
 
 export async function listarEstimaciones(animalId: number): Promise<Estimacion[]> {

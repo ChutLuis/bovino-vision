@@ -4,13 +4,14 @@ import * as ImagePicker from 'expo-image-picker';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { FotoEntrada } from '../domain/types';
+import type { FotoEntrada, OrigenFoto } from '../domain/types';
 import type { CapturaScreenProps } from '../navigation/types';
 import { BotonPrimario } from '../ui/Botones';
 import { MarcaAruco } from '../ui/MarcaAruco';
 import { colors, font, radius } from '../ui/theme';
 
-export function CapturaScreen({ navigation }: CapturaScreenProps) {
+export function CapturaScreen({ navigation, route }: CapturaScreenProps) {
+  const aretePrellenado = route.params?.aretePrellenado;
   const [ocupado, setOcupado] = useState(false);
   const insets = useSafeAreaInsets();
 
@@ -36,7 +37,7 @@ export function CapturaScreen({ navigation }: CapturaScreenProps) {
         exif: true,
         cameraType: ImagePicker.CameraType.back,
       });
-      abrirFoto(resultado);
+      abrirFoto(resultado, 'camara');
     } catch (cause) {
       Alert.alert(
         'No se pudo abrir la camara',
@@ -68,7 +69,7 @@ export function CapturaScreen({ navigation }: CapturaScreenProps) {
         quality: 1,
         exif: true,
       });
-      abrirFoto(resultado);
+      abrirFoto(resultado, 'galeria');
     } catch (cause) {
       Alert.alert(
         'No se pudo abrir la galeria',
@@ -79,13 +80,13 @@ export function CapturaScreen({ navigation }: CapturaScreenProps) {
     }
   };
 
-  const abrirFoto = (resultado: ImagePicker.ImagePickerResult): void => {
+  const abrirFoto = (resultado: ImagePicker.ImagePickerResult, origen: OrigenFoto): void => {
     if (resultado.canceled) {
       return;
     }
 
-    const foto = fotoDesdeAsset(resultado.assets[0]);
-    navigation.navigate('Procesando', { foto });
+    const foto = fotoDesdeAsset(resultado.assets[0], origen);
+    navigation.navigate('Procesando', { foto, aretePrellenado });
   };
 
   return (
@@ -195,12 +196,13 @@ function IconoVaca() {
   );
 }
 
-function fotoDesdeAsset(asset: ImagePicker.ImagePickerAsset): FotoEntrada {
+function fotoDesdeAsset(asset: ImagePicker.ImagePickerAsset, origen: OrigenFoto): FotoEntrada {
   const orientacion = Number(asset.exif?.Orientation);
 
   return {
     uri: asset.uri,
     orientacion_exif: Number.isFinite(orientacion) ? orientacion : null,
+    origen,
   };
 }
 
