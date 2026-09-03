@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
   },
   subtitulo: {
     marginTop: 12,
-    color: colors.salvia,
+    color: colors.salviaClara,
     fontFamily: font.regular,
     fontSize: 21,
     textAlign: 'center',
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   },
   sinInternet: {
     marginBottom: 56,
-    color: colors.salvia,
+    color: colors.salviaClara,
     fontFamily: font.regular,
     fontSize: 15,
     textAlign: 'center',

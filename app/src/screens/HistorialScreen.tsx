@@ -4,6 +4,7 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
+  TextInput,
   View,
   type ListRenderItemInfo,
 } from 'react-native';
@@ -31,6 +32,7 @@ export function HistorialScreen({ navigation }: HistorialScreenProps) {
   const [cargando, setCargando] = useState(true);
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [mensajeDetalle, setMensajeDetalle] = useState<string | null>(null);
+  const [busqueda, setBusqueda] = useState('');
 
   const cargarAnimales = async (): Promise<void> => {
     setCargando(true);
@@ -74,13 +76,25 @@ export function HistorialScreen({ navigation }: HistorialScreenProps) {
     }
   };
 
+  const terminoBusqueda = busqueda.trim().toLowerCase();
+  const animalesFiltrados = animales.filter((animal) => {
+    if (terminoBusqueda.length === 0) {
+      return true;
+    }
+    const matchArete = animal.arete.toLowerCase().includes(terminoBusqueda);
+    const matchNombre = animal.nombre?.toLowerCase().includes(terminoBusqueda) ?? false;
+    return matchArete || matchNombre;
+  });
+
   const totalPesadas = animales.reduce((total, animal) => total + animal.estimaciones_count, 0);
   const resumen = `${animales.length} ${animales.length === 1 ? 'animal' : 'animales'} · ${totalPesadas} ${totalPesadas === 1 ? 'pesada' : 'pesadas'}`;
   const enDetalle = seleccionado != null;
   const titulo = enDetalle ? `Arete ${seleccionado.arete}` : 'Historial';
   const subtitulo = enDetalle
     ? `${estimaciones.length} ${estimaciones.length === 1 ? 'pesada' : 'pesadas'}`
-    : resumen;
+    : terminoBusqueda.length > 0
+      ? `${animalesFiltrados.length} ${animalesFiltrados.length === 1 ? 'resultado' : 'resultados'}`
+      : resumen;
 
   const volver = (): void => {
     if (enDetalle) {
@@ -105,7 +119,12 @@ export function HistorialScreen({ navigation }: HistorialScreenProps) {
           <Text style={styles.chevron}>{'\u2039'}</Text>
         </Pressable>
         <View style={styles.titulosEncabezado}>
-          <Text numberOfLines={1} style={styles.tituloEncabezado}>
+          <Text
+            adjustsFontSizeToFit={true}
+            minimumFontScale={0.7}
+            numberOfLines={1}
+            style={styles.tituloEncabezado}
+          >
             {titulo}
           </Text>
           <Text numberOfLines={1} style={styles.subtituloEncabezado}>
@@ -113,6 +132,37 @@ export function HistorialScreen({ navigation }: HistorialScreenProps) {
           </Text>
         </View>
       </View>
+
+      {!enDetalle ? (
+        <View style={styles.busquedaContenedor}>
+          <Text style={styles.lupaIcono}>⌕</Text>
+          <TextInput
+            accessibilityLabel="Buscar por número de arete"
+            autoCapitalize="none"
+            autoCorrect={false}
+            inputMode="numeric"
+            onChangeText={setBusqueda}
+            placeholder="Buscar arete…"
+            placeholderTextColor={colors.grisCalido}
+            style={styles.campoBusqueda}
+            value={busqueda}
+          />
+          {busqueda.length > 0 ? (
+            <Pressable
+              accessibilityLabel="Limpiar búsqueda"
+              accessibilityRole="button"
+              android_ripple={{ color: colors.rippleSecundario }}
+              onPress={() => setBusqueda('')}
+              style={({ pressed }) => [
+                styles.botonLimpiarBusqueda,
+                pressed ? styles.botonLimpiarPresionado : undefined,
+              ]}
+            >
+              <Text style={styles.textoLimpiarBusqueda}>✕</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
 
       {enDetalle ? (
         <FlatList
@@ -128,13 +178,23 @@ export function HistorialScreen({ navigation }: HistorialScreenProps) {
       ) : (
         <FlatList<AnimalConResumen>
           contentContainerStyle={styles.contenidoLista}
-          data={animales}
+          data={animalesFiltrados}
           keyExtractor={(animal) => String(animal.id)}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
-            <EstadoVacio
-              mostrarRegistro={!cargando && mensaje == null}
-              texto={mensaje ?? (cargando ? 'Cargando historial…' : 'Todavía no hay animales guardados.')}
-            />
+            terminoBusqueda.length > 0 ? (
+              <EstadoVacio
+                esBusqueda={true}
+                onLimpiarBusqueda={() => setBusqueda('')}
+                texto="Ningún arete coincide con la búsqueda."
+              />
+            ) : (
+              <EstadoVacio
+                mostrarRegistro={!cargando && mensaje == null}
+                texto={mensaje ?? (cargando ? 'Cargando historial…' : 'Todavía no hay animales guardados.')}
+              />
+            )
           }
           ListHeaderComponent={mensaje != null && animales.length > 0 ? <Mensaje texto={mensaje} /> : null}
           refreshControl={
@@ -183,7 +243,12 @@ function TarjetaAnimal({ animal, onPress }: TarjetaAnimalProps) {
     >
       <Orejera arete={animal.arete} />
       <View style={styles.datosAnimal}>
-        <Text numberOfLines={1} style={styles.nombreAnimal}>
+        <Text
+          adjustsFontSizeToFit={true}
+          minimumFontScale={0.75}
+          numberOfLines={1}
+          style={styles.nombreAnimal}
+        >
           {`Arete ${animal.arete}`}
         </Text>
         <Text numberOfLines={1} style={styles.fechaAnimal}>
@@ -206,7 +271,12 @@ function Orejera({ arete }: { arete: string }) {
   return (
     <View style={styles.orejera}>
       <View style={styles.agujeroOrejera} />
-      <Text numberOfLines={1} style={styles.textoOrejera}>
+      <Text
+        adjustsFontSizeToFit={true}
+        minimumFontScale={0.5}
+        numberOfLines={1}
+        style={styles.textoOrejera}
+      >
         {arete}
       </Text>
     </View>
@@ -231,7 +301,17 @@ function renderizarEstimacion({ item }: ListRenderItemInfo<Estimacion>) {
   );
 }
 
-function EstadoVacio({ mostrarRegistro = false, texto }: { mostrarRegistro?: boolean; texto: string }) {
+function EstadoVacio({
+  mostrarRegistro = false,
+  esBusqueda = false,
+  onLimpiarBusqueda,
+  texto,
+}: {
+  mostrarRegistro?: boolean;
+  esBusqueda?: boolean;
+  onLimpiarBusqueda?: () => void;
+  texto: string;
+}) {
   return (
     <View style={styles.estadoVacio}>
       <Text style={styles.estadoVacioTexto}>
@@ -239,6 +319,20 @@ function EstadoVacio({ mostrarRegistro = false, texto }: { mostrarRegistro?: boo
       </Text>
       {mostrarRegistro ? (
         <Text style={styles.estadoVacioDetalle}>Tome una foto y guarde el resultado con el arete.</Text>
+      ) : null}
+      {esBusqueda && onLimpiarBusqueda != null ? (
+        <Pressable
+          accessibilityLabel="Limpiar búsqueda"
+          accessibilityRole="button"
+          android_ripple={{ color: colors.rippleSecundario }}
+          onPress={onLimpiarBusqueda}
+          style={({ pressed }) => [
+            styles.botonResetBusqueda,
+            pressed ? styles.botonResetPresionado : undefined,
+          ]}
+        >
+          <Text style={styles.textoResetBusqueda}>Limpiar búsqueda</Text>
+        </Pressable>
       ) : null}
     </View>
   );
@@ -319,7 +413,7 @@ const styles = StyleSheet.create({
   },
   subtituloEncabezado: {
     marginTop: 2,
-    color: colors.salvia,
+    color: colors.salviaClara,
     fontFamily: font.regular,
     fontSize: 16,
   },
@@ -366,7 +460,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cremaFondo,
   },
   textoOrejera: {
-    maxWidth: 54,
+    width: '100%',
+    paddingHorizontal: 3,
     color: colors.bosque,
     fontFamily: font.black,
     fontSize: 23,
@@ -474,6 +569,67 @@ const styles = StyleSheet.create({
     fontFamily: font.medium,
     fontSize: 16,
     lineHeight: 22,
+  },
+  busquedaContenedor: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.bordeTarjeta,
+    backgroundColor: colors.cremaFondo,
+  },
+  lupaIcono: {
+    color: colors.tierra,
+    fontFamily: font.bold,
+    fontSize: 22,
+    lineHeight: 24,
+  },
+  campoBusqueda: {
+    flex: 1,
+    height: 44,
+    paddingHorizontal: 12,
+    borderWidth: 2,
+    borderColor: colors.bordeTarjeta,
+    borderRadius: radius.input,
+    color: colors.verdeTinta,
+    backgroundColor: colors.tarjeta,
+    fontFamily: font.medium,
+    fontSize: 16,
+  },
+  botonLimpiarBusqueda: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: colors.chipClaro,
+  },
+  botonLimpiarPresionado: {
+    opacity: 0.7,
+  },
+  textoLimpiarBusqueda: {
+    color: colors.tierra,
+    fontFamily: font.bold,
+    fontSize: 14,
+  },
+  botonResetBusqueda: {
+    marginTop: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderWidth: 2,
+    borderColor: colors.verdeMedio,
+    borderRadius: radius.input,
+    backgroundColor: 'transparent',
+  },
+  botonResetPresionado: {
+    opacity: 0.8,
+  },
+  textoResetBusqueda: {
+    color: colors.verdeMedio,
+    fontFamily: font.bold,
+    fontSize: 15,
   },
   pie: {
     gap: 10,

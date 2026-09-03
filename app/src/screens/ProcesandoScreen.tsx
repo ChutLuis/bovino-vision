@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
   },
   nota: {
     marginTop: 6,
-    color: colors.textoClaroTer,
+    color: colors.salviaClara,
     fontFamily: font.regular,
     fontSize: 12,
     lineHeight: 16,

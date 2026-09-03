@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.salvia,
   },
   sinRedTexto: {
-    color: colors.salvia,
+    color: colors.salviaClara,
     fontFamily: font.bold,
     fontSize: 11,
     letterSpacing: 1.2,
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
   },
   introduccion: {
     marginTop: 8,
-    color: colors.salvia,
+    color: colors.salviaClara,
     fontFamily: font.regular,
     fontSize: 16,
     lineHeight: 22,
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   },
   requisitoDetalle: {
     marginTop: 1,
-    color: colors.salvia,
+    color: colors.salviaClara,
     fontFamily: font.regular,
     fontSize: 13,
     lineHeight: 18,
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   accionTexto: {
-    color: colors.salvia,
+    color: colors.salviaClara,
     fontFamily: font.bold,
     fontSize: 16,
   },

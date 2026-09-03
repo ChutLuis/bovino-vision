@@ -121,10 +121,12 @@ function ResultadoExitoso({
   onGuardar,
   insetInferior,
 }: ResultadoExitosoProps) {
+  const insets = useSafeAreaInsets();
   const [arete, setArete] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [areteEnfocado, setAreteEnfocado] = useState(false);
+  const [tecladoVisible, setTecladoVisible] = useState(false);
   const [fotoAmpliada, setFotoAmpliada] = useState(false);
   const [tamanoFoto, setTamanoFoto] = useState<Tamano | null>(null);
   const [tamanoOriginal, setTamanoOriginal] = useState<Tamano | null>(null);
@@ -132,15 +134,35 @@ function ResultadoExitoso({
   const areteRef = useRef<TextInput>(null);
   const resultadoScrollRef = useRef<ScrollView>(null);
 
+  const scrollAlFinal = (): void => {
+    requestAnimationFrame(() => {
+      resultadoScrollRef.current?.scrollToEnd({ animated: true });
+    });
+    setTimeout(() => {
+      resultadoScrollRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+    setTimeout(() => {
+      resultadoScrollRef.current?.scrollToEnd({ animated: true });
+    }, 280);
+  };
+
   useEffect(() => {
-    const suscripcion = Keyboard.addListener('keyboardDidShow', () => {
-      if (areteEnfocado) {
-        requestAnimationFrame(() => resultadoScrollRef.current?.scrollToEnd({ animated: true }));
-      }
+    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+      setTecladoVisible(true);
+      scrollAlFinal();
     });
 
-    return () => suscripcion.remove();
-  }, [areteEnfocado]);
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setTecladoVisible(false);
+      setAreteEnfocado(false);
+      areteRef.current?.blur();
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     let vigente = true;
@@ -236,7 +258,7 @@ function ResultadoExitoso({
     cajaMarcador != null && tamanoFoto != null
       ? calcularPosicionEtiquetaMarcador(cajaMarcador, cajaMascara, tamanoFoto)
       : null;
-  const textoIntervalo = textoIntervaloDesdeBundle(resultado.intervalo_modelo);
+  const infoConfianza = calcularInfoConfianza(resultado.intervalo_modelo, resultado.peso_kg);
 
   const actualizarTamanoFoto = ({ nativeEvent }: LayoutChangeEvent): void => {
     const { width, height } = nativeEvent.layout;
@@ -257,13 +279,13 @@ function ResultadoExitoso({
 
   const enfocarArete = (): void => {
     areteRef.current?.focus();
-    requestAnimationFrame(() => resultadoScrollRef.current?.scrollToEnd({ animated: true }));
+    scrollAlFinal();
   };
 
   const actualizarFocoArete = (enfocado: boolean): void => {
     setAreteEnfocado(enfocado);
     if (enfocado) {
-      requestAnimationFrame(() => resultadoScrollRef.current?.scrollToEnd({ animated: true }));
+      scrollAlFinal();
     }
   };
 
@@ -274,19 +296,48 @@ function ResultadoExitoso({
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.resultadoPantalla}
     >
       <StatusBar style="light" />
+      {tecladoVisible ? (
+        <View style={[styles.barraResumenCompacta, { paddingTop: Math.max(12, insets.top + 8) }]}>
+          <View style={styles.resumenCompactoInfo}>
+            <Text style={styles.resumenCompactoPeso}>
+              {`${Math.round(resultado.peso_kg)} kg`}
+            </Text>
+            <Text style={styles.resumenCompactoPunto}>·</Text>
+            <View style={[styles.chipCompacto, { backgroundColor: infoConfianza.colorBg }]}>
+              <View style={[styles.puntoIntervalo, { backgroundColor: infoConfianza.colorPunto }]} />
+              <Text style={[styles.textoChipCompacto, { color: infoConfianza.colorTexto }]}>
+                {`± ${infoConfianza.margenKg} kg`}
+              </Text>
+            </View>
+          </View>
+          <Pressable
+            accessibilityLabel="Ocultar teclado para ver foto completa"
+            accessibilityRole="button"
+            android_ripple={{ color: colors.rippleSalvia }}
+            onPress={() => {
+              areteRef.current?.blur();
+              Keyboard.dismiss();
+            }}
+            style={({ pressed }) => [
+              styles.botonOcultarTeclado,
+              pressed ? styles.botonOcultarPresionado : undefined,
+            ]}
+          >
+            <Text style={styles.textoOcultarTeclado}>Ver foto</Text>
+          </Pressable>
+        </View>
+      ) : null}
       <ScrollView
-        contentContainerStyle={[styles.resultadoContenido, { paddingBottom: insetInferior + 16 }]}
+        contentContainerStyle={[
+          styles.resultadoContenido,
+          { paddingBottom: tecladoVisible ? 160 : Math.max(32, insetInferior + 24) },
+        ]}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
-        onLayout={() => {
-          if (areteEnfocado) {
-            requestAnimationFrame(() => resultadoScrollRef.current?.scrollToEnd({ animated: true }));
-          }
-        }}
         ref={resultadoScrollRef}
         showsVerticalScrollIndicator={false}
         style={styles.resultadoScroll}
@@ -334,12 +385,16 @@ function ResultadoExitoso({
             <View style={styles.filaPeso}>
               <Text style={styles.peso}>{Math.round(resultado.peso_kg)}</Text>
               <Text style={styles.unidad}>kg</Text>
-              {textoIntervalo != null ? (
-                <View style={styles.chipIntervalo}>
-                  <Text style={styles.textoIntervalo}>{textoIntervalo}</Text>
-                </View>
-              ) : null}
+              <View style={[styles.chipIntervalo, { backgroundColor: infoConfianza.colorBg }]}>
+                <View style={[styles.puntoIntervalo, { backgroundColor: infoConfianza.colorPunto }]} />
+                <Text style={[styles.textoIntervalo, { color: infoConfianza.colorTexto }]}>
+                  {infoConfianza.etiqueta}
+                </Text>
+              </View>
             </View>
+            <Text style={[styles.notaConfianza, { color: infoConfianza.colorTexto }]}>
+              {infoConfianza.nota}
+            </Text>
             <View style={styles.pruebaFoto}>
               <View style={styles.puntoPrueba} />
               <Text style={styles.pruebaDetalle}>Vaca y cuadro ubicados en la foto.</Text>
@@ -349,15 +404,20 @@ function ResultadoExitoso({
           <View style={styles.formulario}>
             <Text style={styles.etiquetaCampo}>Arete obligatorio</Text>
             <TextInput
-              accessibilityLabel="Arete obligatorio"
+              accessibilityLabel="Número de arete obligatorio"
               autoCapitalize="characters"
+              inputMode="numeric"
+              keyboardType="numeric"
+              maxLength={6}
               onChangeText={actualizarArete}
               onBlur={() => actualizarFocoArete(false)}
               onFocus={() => actualizarFocoArete(true)}
+              onPressIn={scrollAlFinal}
               onSubmitEditing={() => void guardar()}
-              placeholder="Arete"
+              placeholder="Arete (ej. 8492)"
               placeholderTextColor={colors.grisCalido}
               ref={areteRef}
+              returnKeyType="done"
               style={[
                 styles.campo,
                 areteEnfocado ? styles.campoEnfocado : undefined,
@@ -365,6 +425,7 @@ function ResultadoExitoso({
               ]}
               value={arete}
             />
+            <Text style={styles.notaTeclado}>Solo números — máx. 6 dígitos</Text>
             {error != null ? <Text style={styles.errorGuardar}>{error}</Text> : null}
           </View>
 
@@ -373,13 +434,14 @@ function ResultadoExitoso({
               accessibilityLabel="Guardar en historial"
               alto={56}
               disabled={guardando}
-              titulo={guardando ? 'Guardando...' : 'Guardar'}
+              titulo={guardando ? 'Guardando...' : 'Guardar pesaje'}
               onPress={() => void guardar()}
             />
             <BotonSecundario alto={56} tamanioTexto={20} titulo="Repetir foto" onPress={onRepetir} />
           </View>
         </View>
       </ScrollView>
+
       <Modal
         animationType="fade"
         onRequestClose={() => setFotoAmpliada(false)}
@@ -722,12 +784,50 @@ function areaSolapamiento(
   return Math.max(0, derecha - izquierda) * Math.max(0, inferior - superior);
 }
 
-function textoIntervaloDesdeBundle(intervalo: unknown): string | null {
-  if (typeof intervalo !== 'number' || !Number.isFinite(intervalo) || intervalo <= 0) {
-    return null;
-  }
+interface InfoConfianza {
+  margenKg: number;
+  etiqueta: string;
+  nota: string;
+  colorBg: string;
+  colorTexto: string;
+  colorPunto: string;
+}
 
-  return `± ${Math.round(intervalo)} kg`;
+function calcularInfoConfianza(intervalo: unknown, pesoKg: number): InfoConfianza {
+  const valor =
+    typeof intervalo === 'number' && Number.isFinite(intervalo) && intervalo > 0
+      ? intervalo
+      : Math.round(pesoKg * 0.035);
+  const margenKg = Math.max(1, Math.round(valor));
+
+  if (margenKg < 10) {
+    return {
+      margenKg,
+      etiqueta: `± ${margenKg} kg`,
+      nota: `Lectura válida · margen estimado ±${margenKg} kg`,
+      colorBg: '#dcefdb',
+      colorTexto: '#1c7a37',
+      colorPunto: '#2b7a3e',
+    };
+  }
+  if (margenKg <= 25) {
+    return {
+      margenKg,
+      etiqueta: `± ${margenKg} kg`,
+      nota: `Lectura válida · margen estimado ±${margenKg} kg`,
+      colorBg: '#f6ebc2',
+      colorTexto: '#8a6a00',
+      colorPunto: '#cf9a12',
+    };
+  }
+  return {
+    margenKg,
+    etiqueta: `± ${margenKg} kg`,
+    nota: 'Margen amplio — recomendable volver a tomar la foto.',
+    colorBg: '#f3d9c2',
+    colorTexto: '#9a4712',
+    colorPunto: '#c8612a',
+  };
 }
 
 const styles = StyleSheet.create({
@@ -885,7 +985,7 @@ const styles = StyleSheet.create({
   },
   subtituloFotoAmpliada: {
     marginTop: 1,
-    color: colors.salvia,
+    color: colors.salviaClara,
     fontFamily: font.regular,
     fontSize: 13,
     lineHeight: 18,
@@ -931,6 +1031,63 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     textAlign: 'center',
   },
+  barraResumenCompacta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: colors.bosque,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.bordeClaro,
+    zIndex: 10,
+  },
+  resumenCompactoInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  resumenCompactoPeso: {
+    color: colors.crema,
+    fontFamily: font.black,
+    fontSize: 22,
+    lineHeight: 26,
+  },
+  resumenCompactoPunto: {
+    color: colors.salviaClara,
+    fontFamily: font.bold,
+    fontSize: 20,
+    lineHeight: 22,
+  },
+  chipCompacto: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: radius.chip,
+  },
+  textoChipCompacto: {
+    fontFamily: font.bold,
+    fontSize: 14,
+    lineHeight: 16,
+  },
+  botonOcultarTeclado: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: radius.chip,
+    borderWidth: 1,
+    borderColor: colors.salviaClara,
+    backgroundColor: 'rgba(182, 214, 185, 0.12)',
+  },
+  botonOcultarPresionado: {
+    opacity: 0.7,
+  },
+  textoOcultarTeclado: {
+    color: colors.salviaClara,
+    fontFamily: font.bold,
+    fontSize: 13,
+  },
   panelResultado: {
     paddingTop: 12,
     paddingHorizontal: 16,
@@ -963,16 +1120,31 @@ const styles = StyleSheet.create({
     lineHeight: 32,
   },
   chipIntervalo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     alignSelf: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
     borderRadius: radius.chip,
     backgroundColor: colors.chipClaro,
   },
+  puntoIntervalo: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
   textoIntervalo: {
-    color: colors.tierra,
     fontFamily: font.bold,
-    fontSize: 22,
+    fontSize: 15,
+    lineHeight: 18,
+  },
+  notaConfianza: {
+    marginTop: 4,
+    marginBottom: 4,
+    fontFamily: font.medium,
+    fontSize: 13,
+    lineHeight: 18,
   },
   pruebaFoto: {
     flexDirection: 'row',
@@ -1025,7 +1197,19 @@ const styles = StyleSheet.create({
     borderColor: colors.error,
   },
   campoEnfocado: {
-    borderColor: colors.verdeMedio,
+    borderColor: colors.maiz,
+    borderWidth: 2,
+    shadowColor: colors.maiz,
+    shadowOpacity: 0.45,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 3,
+  },
+  notaTeclado: {
+    color: colors.grisCalido,
+    fontFamily: font.regular,
+    fontSize: 12,
+    lineHeight: 16,
   },
   errorGuardar: {
     color: colors.error,
@@ -1035,7 +1219,7 @@ const styles = StyleSheet.create({
   },
   accionesResultado: {
     gap: 10,
-    marginTop: 12,
+    marginTop: 18,
   },
   rechazoPantalla: {
     flex: 1,

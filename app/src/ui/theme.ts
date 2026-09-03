@@ -9,6 +9,7 @@ export const colors = {
   verdeNombre: '#23301f',
   salvia: '#9dbfa0',
   salviaTenue: '#6f8f74',
+  salviaClara: '#b6d6b9',
   crema: '#f6f1e3',
   cremaFondo: '#f0ead9',
   tarjeta: '#fffdf6',
