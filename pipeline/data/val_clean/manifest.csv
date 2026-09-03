@@ -1,41 +1,25 @@
-qid,stratum,cow_id,source_file,image_file,n_instances,width,height,status
-facil_01_perla,facil,PERLA,WhatsApp Image 2026-06-05 at 07.57.46.jpeg,facil_01_perla.jpeg,1,1280,960,validado_sam
-facil_02_odra,facil,ODRA,WhatsApp Image 2026-06-05 at 07.58.08.jpeg,facil_02_odra.jpeg,1,1280,960,validado_sam
-facil_03_mariquita,facil,MARIQUITA,WhatsApp Image 2026-06-05 at 07.58.33.jpeg,facil_03_mariquita.jpeg,1,1280,960,validado_sam
-facil_04_martita,facil,MARTITA,WhatsApp Image 2026-06-05 at 07.58.52.jpeg,facil_04_martita.jpeg,1,1280,960,validado_sam
-facil_05_lubianca,facil,LUBIANCA,WhatsApp Image 2026-06-05 at 07.59.14.jpeg,facil_05_lubianca.jpeg,1,1280,960,validado_sam
-facil_06_oscarina,facil,OSCARINA,WhatsApp Image 2026-06-05 at 07.59.30.jpeg,facil_06_oscarina.jpeg,1,1280,960,validado_sam
-facil_07_cristy,facil,CRISTY,WhatsApp Image 2026-06-05 at 07.59.47.jpeg,facil_07_cristy.jpeg,1,1280,960,validado_sam
-facil_08_selena,facil,SELENA,WhatsApp Image 2026-06-05 at 08.00.07.jpeg,facil_08_selena.jpeg,1,1280,960,validado_sam
-facil_09_nohelia,facil,NOHELIA,WhatsApp Image 2026-06-05 at 08.00.21.jpeg,facil_09_nohelia.jpeg,1,1280,960,validado_sam
-facil_10_martinica,facil,MARTINICA,WhatsApp Image 2026-06-05 at 08.00.48.jpeg,facil_10_martinica.jpeg,1,1280,960,validado_sam
-facil_11_ford,facil,FORD,WhatsApp Image 2026-06-05 at 08.01.11.jpeg,facil_11_ford.jpeg,1,1280,960,validado_sam
-facil_12_zafiro,facil,ZAFIRO,WhatsApp Image 2026-06-05 at 08.01.27.jpeg,facil_12_zafiro.jpeg,1,1280,960,validado_sam
-facil_13_chiquita,facil,CHIQUITA,WhatsApp Image 2026-06-05 at 08.01.47.jpeg,facil_13_chiquita.jpeg,1,1280,960,validado_sam
-facil_14_nohemi,facil,NOHEMI,WhatsApp Image 2026-06-05 at 08.02.08.jpeg,facil_14_nohemi.jpeg,1,1280,960,validado_sam
-facil_15_karina,facil,KARINA,WhatsApp Image 2026-06-05 at 08.02.30.jpeg,facil_15_karina.jpeg,1,1280,960,validado_sam
-media_01_ambar_burst1,media,AMBAR,IMG_20260604_064714.jpg,media_01_ambar_burst1.jpg,1,4096,2304,validado_sam
-media_02_ambar_burst2,media,AMBAR,IMG_20260604_064716.jpg,media_02_ambar_burst2.jpg,1,4096,2304,validado_sam
-media_03_ambar_burst3,media,AMBAR,IMG_20260604_064722.jpg,media_03_ambar_burst3.jpg,1,4096,2304,validado_sam
-media_04_estrellita_burst1,media,ESTRELLITA,IMG_20260604_064949.jpg,media_04_estrellita_burst1.jpg,1,4096,2304,validado_sam
-media_05_estrellita_burst2,media,ESTRELLITA,IMG_20260604_064955.jpg,media_05_estrellita_burst2.jpg,1,4096,2304,validado_sam
-media_06_estrellita_burst3,media,ESTRELLITA,IMG_20260604_064958.jpg,media_06_estrellita_burst3.jpg,1,4096,2304,validado_sam
-media_07_taty_burst1,media,TATY,IMG_20260604_070123.jpg,media_07_taty_burst1.jpg,1,4096,2304,validado_sam
-media_08_taty_burst2,media,TATY,IMG_20260604_070128.jpg,media_08_taty_burst2.jpg,1,4096,2304,validado_sam
-media_09_nahomi_burst1,media,NAHOMI,IMG_20260604_064257.jpg,media_09_nahomi_burst1.jpg,1,4096,2304,validado_sam
-media_10_nahomi_burst2,media,NAHOMI,IMG_20260604_064259.jpg,media_10_nahomi_burst2.jpg,1,4096,2304,validado_sam
-media_11_karina_burst1,media,KARINA,IMG_20260604_064052.jpg,media_11_karina_burst1.jpg,1,4096,2304,validado_sam
-media_12_karina_burst2,media,KARINA,IMG_20260604_064055.jpg,media_12_karina_burst2.jpg,1,4096,2304,validado_sam
-media_13_odra_burst1,media,ODRA,IMG_20260604_065125.jpg,media_13_odra_burst1.jpg,1,4096,2304,validado_sam
-media_14_anita_repesaje,media,ANITA,anita.jpeg,media_14_anita_repesaje.jpeg,1,1280,960,validado_sam
-media_15_damita_repesaje,media,DAMITA,damita.jpeg,media_15_damita_repesaje.jpeg,1,1600,1200,validado_sam
-dificil_01_karina_missed,dificil,KARINA,karina.jpeg,dificil_01_karina_missed.jpeg,1,1600,1200,validado_sam
-dificil_02_oscarina_missed,dificil,OSCARINA,oscarina.jpeg,dificil_02_oscarina_missed.jpeg,1,1600,1200,validado_sam
-dificil_03_diagira_multi3,dificil,DIAGIRA,diagira.jpeg,dificil_03_diagira_multi3.jpeg,2,1600,1200,validado_sam
-dificil_04_lubianca_multi2,dificil,LUBIANCA,lubianca.jpeg,dificil_04_lubianca_multi2.jpeg,2,1280,960,validado_sam
-dificil_05_mafer_multi,dificil,MAFER,mafer.jpeg,dificil_05_mafer_multi.jpeg,2,1600,1200,validado_sam
-dificil_06_chaparrita_occlusion,dificil,CHAPARRITA,chaparrita.jpeg,dificil_06_chaparrita_occlusion.jpeg,2,1280,960,validado_sam
-dificil_07_zafiro_multi2,dificil,ZAFIRO,zafiro.jpeg,dificil_07_zafiro_multi2.jpeg,2,1280,960,validado_sam
-dificil_08_selena_multi2,dificil,SELENA,selena.jpeg,dificil_08_selena_multi2.jpeg,1,1280,960,validado_sam
-dificil_09_nohemi_multi2,dificil,NOHEMI,nohemi.jpeg,dificil_09_nohemi_multi2.jpeg,1,1280,960,validado_sam
-dificil_10_mariquita_multi2,dificil,MARIQUITA,mariquita.jpeg,dificil_10_mariquita_multi2.jpeg,1,1280,960,validado_sam
+qid,stratum,cow_id,source_file,image_file,n_instances,n_polygons,status
+5_06_perla,facil,PERLA,WhatsApp Image 2026-06-05 at 07.57.46.jpeg,5_06_perla.jpeg,1,1,anotado_manual
+5_06_odra,facil,ODRA,WhatsApp Image 2026-06-05 at 07.58.08.jpeg,5_06_odra.jpeg,1,1,anotado_manual
+5_06_mariquita,facil,MARIQUITA,WhatsApp Image 2026-06-05 at 07.58.33.jpeg,5_06_mariquita.jpeg,1,1,anotado_manual
+5_06_martita,facil,MARTITA,WhatsApp Image 2026-06-05 at 07.58.52.jpeg,5_06_martita.jpeg,1,1,anotado_manual
+5_06_lubianca,facil,LUBIANCA,WhatsApp Image 2026-06-05 at 07.59.14.jpeg,5_06_lubianca.jpeg,1,1,anotado_manual
+5_06_oscarina,facil,OSCARINA,WhatsApp Image 2026-06-05 at 07.59.30.jpeg,5_06_oscarina.jpeg,1,1,anotado_manual
+5_06_cristy,facil,CRISTY,WhatsApp Image 2026-06-05 at 07.59.47.jpeg,5_06_cristy.jpeg,1,1,anotado_manual
+5_06_selena,facil,SELENA,WhatsApp Image 2026-06-05 at 08.00.07.jpeg,5_06_selena.jpeg,1,1,anotado_manual
+5_06_nohelia,facil,NOHELIA,WhatsApp Image 2026-06-05 at 08.00.21.jpeg,5_06_nohelia.jpeg,1,1,anotado_manual
+5_06_martinica,facil,MARTINICA,WhatsApp Image 2026-06-05 at 08.00.48.jpeg,5_06_martinica.jpeg,1,1,anotado_manual
+5_06_ford,facil,FORD,WhatsApp Image 2026-06-05 at 08.01.11.jpeg,5_06_ford.jpeg,1,1,anotado_manual
+5_06_zafiro,facil,ZAFIRO,WhatsApp Image 2026-06-05 at 08.01.27.jpeg,5_06_zafiro.jpeg,1,1,anotado_manual
+5_06_chiquita,facil,CHIQUITA,WhatsApp Image 2026-06-05 at 08.01.47.jpeg,5_06_chiquita.jpeg,1,1,anotado_manual
+5_06_nohemi,facil,NOHEMI,WhatsApp Image 2026-06-05 at 08.02.08.jpeg,5_06_nohemi.jpeg,1,1,anotado_manual
+5_06_karina,facil,KARINA,WhatsApp Image 2026-06-05 at 08.02.30.jpeg,5_06_karina.jpeg,1,1,anotado_manual
+burst_ambar_01,media,AMBAR,IMG_20260604_064714.jpg,burst_ambar_01.jpg,5,5,anotado_manual
+burst_ambar_02,media,AMBAR,IMG_20260604_064716.jpg,burst_ambar_02.jpg,5,5,anotado_manual
+burst_ambar_03,media,AMBAR,IMG_20260604_064722.jpg,burst_ambar_03.jpg,5,5,anotado_manual
+burst_estrellita_01,media,ESTRELLITA,IMG_20260604_064949.jpg,burst_estrellita_01.jpg,5,5,anotado_manual
+burst_estrellita_02,media,ESTRELLITA,IMG_20260604_064955.jpg,burst_estrellita_02.jpg,4,4,anotado_manual
+burst_estrellita_03,media,ESTRELLITA,IMG_20260604_064958.jpg,burst_estrellita_03.jpg,5,4,anotado_manual
+burst_taty_01,media,TATY,IMG_20260604_070123.jpg,burst_taty_01.jpg,8,5,anotado_manual
+burst_taty_02,media,TATY,IMG_20260604_070128.jpg,burst_taty_02.jpg,11,4,anotado_manual
+burst_nahomi_01,media,NAHOMI,IMG_20260604_064257.jpg,burst_nahomi_01.jpg,7,6,anotado_manual
