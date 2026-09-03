@@ -334,9 +334,7 @@ function ResultadoExitoso({
   }, [resultado.foto_uri]);
 
   const guardar = async (): Promise<void> => {
-    if (arete.trim().length === 0) {
-      setError('Ingrese el arete antes de guardar.');
-      enfocarArete();
+    if (!puedeGuardar) {
       return;
     }
 
@@ -416,14 +414,6 @@ function ResultadoExitoso({
 
   const actualizarArete = (value: string): void => {
     setArete(value);
-    if (error === 'Ingrese el arete antes de guardar.') {
-      setError(null);
-    }
-  };
-
-  const enfocarArete = (): void => {
-    areteRef.current?.focus();
-    scrollAlFinal();
   };
 
   const actualizarFocoArete = (enfocado: boolean): void => {
@@ -525,7 +515,6 @@ function ResultadoExitoso({
               style={[
                 styles.campoContenedor,
                 areteEnfocado ? styles.campoEnfocado : undefined,
-                error === 'Ingrese el arete antes de guardar.' ? styles.campoError : undefined,
               ]}
             >
               <TextInput
@@ -538,7 +527,11 @@ function ResultadoExitoso({
                 onBlur={() => actualizarFocoArete(false)}
                 onFocus={() => actualizarFocoArete(true)}
                 onPressIn={scrollAlFinal}
-                onSubmitEditing={() => void guardar()}
+                onSubmitEditing={() => {
+                  if (puedeGuardar) {
+                    void guardar();
+                  }
+                }}
                 placeholder="Escriba el arete"
                 placeholderTextColor={colors.grisCalido}
                 ref={areteRef}
@@ -1284,9 +1277,6 @@ const styles = StyleSheet.create({
     color: colors.grisCalido,
     fontFamily: font.bold,
     fontSize: 15,
-  },
-  campoError: {
-    borderColor: colors.error,
   },
   campoEnfocado: {
     borderColor: colors.maiz,

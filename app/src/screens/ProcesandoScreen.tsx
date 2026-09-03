@@ -186,6 +186,7 @@ export function ProcesandoScreen({ navigation, route }: ProcesandoScreenProps) {
               accessibilityLabel="Cancelar y volver a la captura"
               accessibilityRole="button"
               android_ripple={{ color: colors.rippleSalvia }}
+              // La inferencia en curso no se aborta (limitación de TFLite), solo se descarta el resultado.
               onPress={() => navigation.popToTop()}
               style={({ pressed }) => [
                 styles.botonCancelar,

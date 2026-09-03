@@ -742,11 +742,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
   },
-  pesoResumen: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-  },
   pesoBloque: {
     alignItems: 'flex-end',
   },
