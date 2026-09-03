@@ -1,18 +1,22 @@
 import {
+  Alert,
+  BackHandler,
   FlatList,
+  Image,
   Pressable,
   RefreshControl,
   StyleSheet,
   Text,
   TextInput,
   View,
-  type ListRenderItemInfo,
 } from 'react-native';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  borrarEstimacion,
   listarAnimales,
   listarEstimaciones,
   listarFilasExportacion,
@@ -20,6 +24,7 @@ import {
   type Estimacion,
 } from '../data/db/dao';
 import { exportarCsv } from '../data/export/csv';
+import { eliminarFotoPrivada } from '../data/photos';
 import type { HistorialScreenProps, PesadaGuardada } from '../navigation/types';
 import { BotonPrimario, BotonSecundario } from '../ui/Botones';
 import { colors, font, radius } from '../ui/theme';
@@ -36,7 +41,7 @@ export function HistorialScreen({ navigation, route }: HistorialScreenProps) {
   const [mensajeDetalle, setMensajeDetalle] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState('');
 
-  const cargarAnimales = async (): Promise<void> => {
+  const cargarAnimales = useCallback(async (): Promise<void> => {
     setCargando(true);
     setMensaje(null);
 
@@ -48,11 +53,11 @@ export function HistorialScreen({ navigation, route }: HistorialScreenProps) {
     } finally {
       setCargando(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     void cargarAnimales();
-  }, []);
+  }, [cargarAnimales]);
 
   // The band answers "did it save?" for three seconds and then gets out of the way (handoff H1).
   useEffect(() => {
@@ -104,11 +109,13 @@ export function HistorialScreen({ navigation, route }: HistorialScreenProps) {
   const resumen = `${animales.length} ${animales.length === 1 ? 'animal' : 'animales'} · ${totalPesadas} ${totalPesadas === 1 ? 'pesada' : 'pesadas'}`;
   const enDetalle = seleccionado != null;
   const titulo = enDetalle ? `Arete ${seleccionado.arete}` : 'Historial';
+  const conteoPesadas = `${estimaciones.length} ${estimaciones.length === 1 ? 'pesada' : 'pesadas'}`;
   const subtitulo = enDetalle
-    ? `${estimaciones.length} ${estimaciones.length === 1 ? 'pesada' : 'pesadas'}`
+    ? conteoPesadas
     : terminoBusqueda.length > 0
       ? `${animalesFiltrados.length} ${animalesFiltrados.length === 1 ? 'resultado' : 'resultados'}`
       : resumen;
+  const tendencia = tendenciaDesde(estimaciones);
 
   const volver = (): void => {
     if (enDetalle) {
@@ -117,6 +124,66 @@ export function HistorialScreen({ navigation, route }: HistorialScreenProps) {
     }
 
     navigation.popToTop();
+  };
+
+  // One "back" only: inside the detail it returns to the list, not out of the history (handoff D6).
+  useEffect(() => {
+    if (seleccionado == null) {
+      return;
+    }
+
+    const suscripcion = BackHandler.addEventListener('hardwareBackPress', () => {
+      setSeleccionado(null);
+      return true;
+    });
+
+    return () => suscripcion.remove();
+  }, [seleccionado]);
+
+  // D4: the row is gone; if it was the animal's last one, the animal went with it.
+  const borrarPesada = async (estimacion: Estimacion): Promise<void> => {
+    setMensajeDetalle(null);
+
+    try {
+      const resultado = await borrarEstimacion(estimacion.id);
+
+      if (resultado.ruta_foto != null) {
+        try {
+          eliminarFotoPrivada(resultado.ruta_foto);
+        } catch (cause) {
+          // The row is what matters; a leftover file is not worth failing the delete over.
+          console.error('No se pudo borrar la foto de la pesada.', cause);
+        }
+      }
+
+      await cargarAnimales();
+
+      if (resultado.animal_borrado) {
+        setSeleccionado(null);
+        setEstimaciones([]);
+        return;
+      }
+
+      setEstimaciones(await listarEstimaciones(estimacion.animal_id));
+    } catch (cause) {
+      console.error('No se pudo borrar la pesada.', cause);
+      setMensajeDetalle('No se pudo borrar esta pesada. Inténtelo otra vez.');
+    }
+  };
+
+  const confirmarBorrado = (estimacion: Estimacion): void => {
+    Alert.alert(
+      'Borrar la pesada',
+      `¿Borrar la pesada de las ${horaLegible(estimacion.timestamp)}? No se puede deshacer.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Borrar',
+          style: 'destructive',
+          onPress: () => void borrarPesada(estimacion),
+        },
+      ],
+    );
   };
 
   return (
@@ -137,7 +204,14 @@ export function HistorialScreen({ navigation, route }: HistorialScreenProps) {
             {titulo}
           </Text>
           <Text numberOfLines={1} style={styles.subtituloEncabezado}>
-            {subtitulo}
+            {enDetalle && tendencia != null ? (
+              <>
+                {`${conteoPesadas} · `}
+                <Text style={styles.tendencia}>{tendencia}</Text>
+              </>
+            ) : (
+              subtitulo
+            )}
           </Text>
         </View>
       </View>
@@ -185,14 +259,27 @@ export function HistorialScreen({ navigation, route }: HistorialScreenProps) {
       ) : null}
 
       {enDetalle ? (
-        <FlatList
+        <FlatList<Estimacion>
           contentContainerStyle={styles.contenidoLista}
           data={estimaciones}
           keyExtractor={(estimacion) => String(estimacion.id)}
           ListEmptyComponent={
             <EstadoVacio texto={mensajeDetalle ?? 'Este animal todavía no tiene pesadas.'} />
           }
-          renderItem={renderizarEstimacion}
+          ListFooterComponent={
+            estimaciones.length > 0 ? (
+              <Text style={styles.ayudaBorrado}>
+                Deslice una pesada a la izquierda para borrarla
+              </Text>
+            ) : null
+          }
+          renderItem={({ index, item }) => (
+            <FilaPesada
+              anterior={estimaciones[index + 1] ?? null}
+              estimacion={item}
+              onBorrar={() => confirmarBorrado(item)}
+            />
+          )}
           showsVerticalScrollIndicator={false}
         />
       ) : (
@@ -237,7 +324,18 @@ export function HistorialScreen({ navigation, route }: HistorialScreenProps) {
       )}
 
       <View style={[styles.pie, { paddingBottom: insets.bottom + 16 }]}>
-        <BotonPrimario alto={70} titulo="Pesar otro animal" onPress={() => navigation.popToTop()} />
+        <BotonPrimario
+          alto={70}
+          titulo={enDetalle ? 'Pesar este animal' : 'Pesar otro animal'}
+          onPress={() => {
+            if (seleccionado != null) {
+              navigation.navigate('Captura', { aretePrellenado: seleccionado.arete });
+              return;
+            }
+
+            navigation.popToTop();
+          }}
+        />
         <BotonSecundario
           disabled={totalPesadas === 0}
           alto={56}
@@ -334,22 +432,86 @@ function Orejera({ arete }: { arete: string }) {
   );
 }
 
-function renderizarEstimacion({ item }: ListRenderItemInfo<Estimacion>) {
+interface FilaPesadaProps {
+  anterior: Estimacion | null;
+  estimacion: Estimacion;
+  onBorrar: () => void;
+}
+
+function FilaPesada({ anterior, estimacion, onBorrar }: FilaPesadaProps) {
   return (
-    <View style={styles.tarjetaEstimacion}>
-      <View style={styles.iconoPesada}>
-        <Text style={styles.iconoPesadaTexto}>kg</Text>
+    <Swipeable
+      overshootRight={false}
+      renderRightActions={() => (
+        <Pressable
+          accessibilityLabel={`Borrar la pesada de las ${horaLegible(estimacion.timestamp)}`}
+          accessibilityRole="button"
+          onPress={onBorrar}
+          style={({ pressed }) => [
+            styles.panelBorrar,
+            pressed ? styles.panelBorrarPresionado : undefined,
+          ]}
+        >
+          <Text style={styles.iconoBorrar}>{'\u{1F5D1}'}</Text>
+          <Text style={styles.textoBorrar}>Borrar</Text>
+        </Pressable>
+      )}
+    >
+      <View style={styles.tarjetaEstimacion}>
+        <Image
+          accessibilityIgnoresInvertColors={true}
+          resizeMode="cover"
+          source={{ uri: estimacion.ruta_foto }}
+          style={styles.miniaturaPesada}
+        />
+        <View style={styles.datosAnimal}>
+          <Text style={styles.etiquetaEstimacion}>PESO ESTIMADO</Text>
+          <Text style={styles.fechaAnimal}>{fechaLegible(estimacion.timestamp)}</Text>
+        </View>
+        <View style={styles.pesoBloque}>
+          <View style={styles.pesoFila}>
+            <Text style={styles.numeroResumen}>{Math.round(estimacion.peso_kg)}</Text>
+            <Text style={styles.unidadResumen}>kg</Text>
+          </View>
+          <DeltaPesada anterior={anterior} estimacion={estimacion} />
+        </View>
       </View>
-      <View style={styles.datosAnimal}>
-        <Text style={styles.etiquetaEstimacion}>PESO REGISTRADO</Text>
-        <Text style={styles.fechaAnimal}>{fechaLegible(item.timestamp)}</Text>
-      </View>
-      <View style={styles.pesoResumen}>
-        <Text style={styles.numeroResumen}>{Math.round(item.peso_kg)}</Text>
-        <Text style={styles.unidadResumen}>kg</Text>
-      </View>
-    </View>
+    </Swipeable>
   );
+}
+
+// Each row against the one before it; "= igual" makes duplicates obvious (handoff D2).
+function DeltaPesada({ anterior, estimacion }: { anterior: Estimacion | null; estimacion: Estimacion }) {
+  if (anterior == null) {
+    return <Text style={[styles.delta, styles.deltaNeutro]}>Primera pesada</Text>;
+  }
+
+  const diferencia = Math.round(estimacion.peso_kg) - Math.round(anterior.peso_kg);
+
+  if (diferencia === 0) {
+    return <Text style={[styles.delta, styles.deltaNeutro]}>= igual</Text>;
+  }
+
+  return (
+    <Text style={[styles.delta, diferencia > 0 ? styles.deltaSube : styles.deltaBaja]}>
+      {`${signoPeso(diferencia)} kg`}
+    </Text>
+  );
+}
+
+// Header trend: the newest weighing against the one before it (handoff D1).
+function tendenciaDesde(estimaciones: Estimacion[]): string | null {
+  if (estimaciones.length < 2) {
+    return null;
+  }
+
+  const diferencia = Math.round(estimaciones[0].peso_kg) - Math.round(estimaciones[1].peso_kg);
+
+  if (diferencia === 0) {
+    return `igual que ${fechaCorta(estimaciones[1].timestamp)}`;
+  }
+
+  return `${signoPeso(diferencia)} kg desde ${fechaCorta(estimaciones[1].timestamp)}`;
 }
 
 function EstadoVacio({
@@ -437,6 +599,16 @@ function fechaCorta(timestamp: string): string {
     .replace(/\.$/, '');
 }
 
+// Used by the delete confirmation so it names the same time the row shows (handoff D4).
+function horaLegible(timestamp: string): string {
+  const fecha = new Date(timestamp);
+  if (Number.isNaN(fecha.getTime())) {
+    return timestamp;
+  }
+
+  return fecha.toLocaleTimeString('es-GT', { hour: 'numeric', minute: '2-digit' });
+}
+
 function diferenciaEnDias(fecha: Date): number {
   const ahora = new Date();
   const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate()).getTime();
@@ -492,6 +664,11 @@ const styles = StyleSheet.create({
     color: colors.salviaClara,
     fontFamily: font.regular,
     fontSize: 16,
+  },
+  tendencia: {
+    // Handoff D1 fixes this green literally; it is the only lighter accent on bosque.
+    color: '#8fe39c',
+    fontFamily: font.bold,
   },
   contenidoLista: {
     flexGrow: 1,
@@ -620,18 +797,43 @@ const styles = StyleSheet.create({
     borderRadius: radius.tarjeta,
     backgroundColor: colors.tarjeta,
   },
-  iconoPesada: {
+  miniaturaPesada: {
     width: 62,
     height: 62,
+    borderRadius: 14,
+    backgroundColor: colors.bosqueCamara,
+  },
+  panelBorrar: {
+    width: 104 + radius.tarjeta,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 14,
-    backgroundColor: colors.chipClaro,
+    gap: 4,
+    marginLeft: -radius.tarjeta,
+    paddingLeft: radius.tarjeta,
+    borderRadius: radius.tarjeta,
+    backgroundColor: colors.error,
   },
-  iconoPesadaTexto: {
+  panelBorrarPresionado: {
+    opacity: 0.85,
+  },
+  iconoBorrar: {
+    color: colors.crema,
+    fontFamily: font.regular,
+    fontSize: 22,
+    lineHeight: 26,
+  },
+  textoBorrar: {
+    color: colors.crema,
+    fontFamily: font.bold,
+    fontSize: 15,
+  },
+  ayudaBorrado: {
+    paddingTop: 4,
     color: colors.tierra,
-    fontFamily: font.black,
-    fontSize: 20,
+    fontFamily: font.regular,
+    fontSize: 14,
+    lineHeight: 18,
+    textAlign: 'center',
   },
   etiquetaEstimacion: {
     color: colors.tierra,
