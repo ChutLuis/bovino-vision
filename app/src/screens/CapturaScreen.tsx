@@ -1,4 +1,4 @@
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { StatusBar } from 'expo-status-bar';
@@ -9,6 +9,8 @@ import type { CapturaScreenProps } from '../navigation/types';
 import { BotonPrimario } from '../ui/Botones';
 import { MarcaAruco } from '../ui/MarcaAruco';
 import { colors, font, radius } from '../ui/theme';
+
+const FOTO_EJEMPLO = require('../../assets/foto-378-limpia.jpg');
 
 export function CapturaScreen({ navigation, route }: CapturaScreenProps) {
   const aretePrellenado = route.params?.aretePrellenado;
@@ -94,10 +96,21 @@ export function CapturaScreen({ navigation, route }: CapturaScreenProps) {
       <StatusBar style="light" />
       <View style={[styles.cabecera, { paddingTop: insets.top + 18 }]}>
         <Text style={styles.marca}>Wakx</Text>
-        <View style={styles.sinRed}>
-          <View style={styles.puntoSinRed} />
-          <Text style={styles.sinRedTexto}>Sin internet</Text>
-        </View>
+        <Pressable
+          accessibilityLabel="Ver historial"
+          accessibilityRole="button"
+          android_ripple={{ color: colors.rippleSalvia }}
+          disabled={ocupado}
+          onPress={() => navigation.navigate('Historial')}
+          style={({ pressed }) => [
+            styles.botonHistorial,
+            ocupado ? styles.deshabilitado : undefined,
+            pressed && !ocupado ? styles.accionPresionada : undefined,
+          ]}
+        >
+          <Text style={styles.iconoHistorial}>{'\u2261'}</Text>
+          <Text style={styles.textoHistorial}>Historial</Text>
+        </Pressable>
       </View>
 
       <View style={styles.contenido}>
@@ -108,15 +121,15 @@ export function CapturaScreen({ navigation, route }: CapturaScreenProps) {
         <View style={styles.requisitos}>
           <Requisito
             detalle="De cabeza a cola, de lado."
-            numero="01"
+            numero="1"
             titulo="Vaca completa"
             visual="vaca"
           />
           <Requisito
             detalle="Junto al costado, derecho y limpio."
-            numero="02"
+            numero="2"
             titulo="Cuadro visible"
-            visual="marcador"
+            visual="cuadro"
           />
         </View>
 
@@ -132,6 +145,23 @@ export function CapturaScreen({ navigation, route }: CapturaScreenProps) {
         >
           <Text style={styles.enlaceGuiaTexto}>Ver la guía otra vez</Text>
         </Pressable>
+
+        <View style={styles.ejemplo}>
+          <Image
+            accessibilityIgnoresInvertColors={true}
+            accessibilityLabel="Ejemplo de una buena foto"
+            resizeMode="cover"
+            source={FOTO_EJEMPLO}
+            style={styles.ejemploFoto}
+          />
+          <View style={styles.ejemploEtiquetaArriba}>
+            <Text style={styles.ejemploTextoArriba}>Así debe verse</Text>
+          </View>
+          <View style={styles.ejemploEtiquetaAbajo}>
+            <MarcaAruco size={16} borderWidth={2} />
+            <Text style={styles.ejemploTextoAbajo}>Cuadro a 3–4 m</Text>
+          </View>
+        </View>
       </View>
 
       <View style={[styles.pie, { paddingBottom: insets.bottom + 16 }]}>
@@ -141,36 +171,20 @@ export function CapturaScreen({ navigation, route }: CapturaScreenProps) {
           titulo="Tomar foto"
           onPress={() => void tomarFoto()}
         />
-        <View style={styles.accionesSecundarias}>
-          <Pressable
-            accessibilityLabel="Elegir foto de la galería"
-            accessibilityRole="button"
-            android_ripple={{ color: colors.rippleSalvia }}
-            disabled={ocupado}
-            onPress={() => void elegirGaleria()}
-            style={({ pressed }) => [
-              styles.accionSecundaria,
-              ocupado ? styles.deshabilitado : undefined,
-              pressed && !ocupado ? styles.accionPresionada : undefined,
-            ]}
-          >
-            <Text style={styles.accionTexto}>Galería</Text>
-          </Pressable>
-          <Pressable
-            accessibilityLabel="Ver historial"
-            accessibilityRole="button"
-            android_ripple={{ color: colors.rippleSalvia }}
-            disabled={ocupado}
-            onPress={() => navigation.navigate('Historial')}
-            style={({ pressed }) => [
-              styles.accionSecundaria,
-              ocupado ? styles.deshabilitado : undefined,
-              pressed && !ocupado ? styles.accionPresionada : undefined,
-            ]}
-          >
-            <Text style={styles.accionTexto}>Historial</Text>
-          </Pressable>
-        </View>
+        <Pressable
+          accessibilityLabel="Elegir una foto de la galería"
+          accessibilityRole="button"
+          android_ripple={{ color: colors.rippleSalvia }}
+          disabled={ocupado}
+          onPress={() => void elegirGaleria()}
+          style={({ pressed }) => [
+            styles.enlaceGaleria,
+            ocupado ? styles.deshabilitado : undefined,
+            pressed && !ocupado ? styles.accionPresionada : undefined,
+          ]}
+        >
+          <Text style={styles.enlaceGaleriaTexto}>Elegir una foto de la galería</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -180,7 +194,7 @@ interface RequisitoProps {
   detalle: string;
   numero: string;
   titulo: string;
-  visual: 'vaca' | 'marcador';
+  visual: 'vaca' | 'cuadro';
 }
 
 function Requisito({ detalle, numero, titulo, visual }: RequisitoProps) {
@@ -193,7 +207,7 @@ function Requisito({ detalle, numero, titulo, visual }: RequisitoProps) {
         <Text style={styles.requisitoTitulo}>{titulo}</Text>
         <Text style={styles.requisitoDetalle}>{detalle}</Text>
       </View>
-      {visual === 'marcador' ? <MarcaAruco size={28} borderWidth={3} /> : <IconoVaca />}
+      {visual === 'cuadro' ? <MarcaAruco size={30} borderWidth={3} /> : <IconoVaca />}
     </View>
   );
 }
@@ -236,23 +250,26 @@ const styles = StyleSheet.create({
     fontSize: 22,
     letterSpacing: -1,
   },
-  sinRed: {
+  botonHistorial: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    minHeight: 44,
+    paddingHorizontal: 14,
+    borderWidth: 2,
+    borderColor: colors.salvia,
+    borderRadius: 12,
   },
-  puntoSinRed: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: colors.salvia,
-  },
-  sinRedTexto: {
+  iconoHistorial: {
     color: colors.salviaClara,
     fontFamily: font.bold,
-    fontSize: 11,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
+    fontSize: 18,
+    lineHeight: 18,
+  },
+  textoHistorial: {
+    color: colors.salviaClara,
+    fontFamily: font.bold,
+    fontSize: 15,
   },
   contenido: {
     flex: 1,
@@ -262,7 +279,7 @@ const styles = StyleSheet.create({
   overline: {
     color: colors.maiz,
     fontFamily: font.bold,
-    fontSize: 12,
+    fontSize: 13,
     letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
@@ -287,25 +304,24 @@ const styles = StyleSheet.create({
   requisito: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 68,
-    gap: 10,
+    minHeight: 70,
+    gap: 12,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderColor: colors.verdeMedio,
   },
   numeroRequisito: {
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.maiz,
-    borderRadius: 14,
+    borderRadius: 16,
+    backgroundColor: colors.maiz,
   },
   numeroRequisitoTexto: {
-    color: colors.maiz,
-    fontFamily: font.bold,
-    fontSize: 10,
+    color: colors.bosque,
+    fontFamily: font.black,
+    fontSize: 15,
   },
   requisitoTexto: {
     flex: 1,
@@ -314,15 +330,57 @@ const styles = StyleSheet.create({
   requisitoTitulo: {
     color: colors.crema,
     fontFamily: font.bold,
-    fontSize: 17,
-    lineHeight: 21,
+    fontSize: 18,
+    lineHeight: 22,
   },
   requisitoDetalle: {
-    marginTop: 1,
-    color: colors.salviaClara,
+    marginTop: 2,
+    color: colors.textoClaroSec,
     fontFamily: font.regular,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  ejemplo: {
+    position: 'relative',
+    height: 200,
+    marginTop: 16,
+    overflow: 'hidden',
+    borderRadius: 16,
+    backgroundColor: colors.bosqueCamara,
+  },
+  ejemploFoto: {
+    ...StyleSheet.absoluteFill,
+  },
+  ejemploEtiquetaArriba: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: colors.bosqueEtiqueta,
+  },
+  ejemploTextoArriba: {
+    color: colors.maiz,
+    fontFamily: font.bold,
+    fontSize: 14,
+  },
+  ejemploEtiquetaAbajo: {
+    position: 'absolute',
+    right: 12,
+    bottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: colors.bosqueEtiqueta,
+  },
+  ejemploTextoAbajo: {
+    color: colors.crema,
+    fontFamily: font.bold,
+    fontSize: 14,
   },
   enlaceGuia: {
     alignSelf: 'flex-start',
@@ -384,26 +442,20 @@ const styles = StyleSheet.create({
     borderTopColor: colors.verdeMedio,
     backgroundColor: colors.bosqueProfundo,
   },
-  accionesSecundarias: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  accionSecundaria: {
-    flex: 1,
-    minHeight: 56,
+  enlaceGaleria: {
+    minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.salvia,
     borderRadius: radius.input,
   },
-  accionPresionada: {
-    opacity: 0.8,
-  },
-  accionTexto: {
+  enlaceGaleriaTexto: {
     color: colors.salviaClara,
     fontFamily: font.bold,
     fontSize: 16,
+    textDecorationLine: 'underline',
+  },
+  accionPresionada: {
+    opacity: 0.8,
   },
   deshabilitado: {
     opacity: 0.5,
