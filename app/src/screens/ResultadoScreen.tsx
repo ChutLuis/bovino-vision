@@ -275,7 +275,7 @@ function ResultadoExitoso({
 
   const cajaMascara =
     tamanoFoto != null && tamanoOriginal != null
-      ? mapearBbox(resultado.mascara.bbox_original_px, tamanoOriginal, tamanoFoto)
+      ? mapearBbox(resultado.mascara.bbox_original_px, tamanoOriginal, tamanoFoto, 'cover')
       : null;
   const marcoFoto =
     tamanoFoto != null && tamanoOriginal != null
@@ -283,17 +283,12 @@ function ResultadoExitoso({
           { left: 0, top: 0, width: tamanoOriginal.width, height: tamanoOriginal.height },
           tamanoOriginal,
           tamanoFoto,
+          'cover',
         )
       : null;
   const esquinasMarcador =
     tamanoFoto != null && tamanoOriginal != null
-      ? mapearEsquinasMarcador(resultado.esquinas_marcador, tamanoOriginal, tamanoFoto)
-      : null;
-  const cajaMarcador =
-    esquinasMarcador != null ? rectanguloDesdePuntos(esquinasMarcador) : null;
-  const posicionEtiquetaMarcador =
-    cajaMarcador != null && tamanoFoto != null
-      ? calcularPosicionEtiquetaMarcador(cajaMarcador, cajaMascara, tamanoFoto)
+      ? mapearEsquinasMarcador(resultado.esquinas_marcador, tamanoOriginal, tamanoFoto, 'cover')
       : null;
   const margenKg = margenHabitualKg(resultado.intervalo_modelo);
   const areteNormalizado = arete.trim();
@@ -344,7 +339,7 @@ function ResultadoExitoso({
     >
       <StatusBar style="light" />
       {tecladoVisible ? (
-        <View style={[styles.barraResumenCompacta, { paddingTop: Math.max(12, insets.top + 8) }]}>
+        <View style={[styles.barraResumenCompacta, { paddingTop: insets.top + 8 }]}>
           <View style={styles.resumenCompactoInfo}>
             <Text style={styles.resumenCompactoPeso}>
               {`${Math.round(resultado.peso_kg)} kg`}
@@ -353,7 +348,7 @@ function ResultadoExitoso({
             <Text style={styles.resumenCompactoMargen}>{`± ${margenKg} kg`}</Text>
           </View>
           <Pressable
-            accessibilityLabel="Ocultar teclado para ver foto completa"
+            accessibilityLabel="Ocultar el teclado"
             accessibilityRole="button"
             android_ripple={{ color: colors.rippleSalvia }}
             onPress={() => {
@@ -365,7 +360,7 @@ function ResultadoExitoso({
               pressed ? styles.botonOcultarPresionado : undefined,
             ]}
           >
-            <Text style={styles.textoOcultarTeclado}>Ver foto</Text>
+            <Text style={styles.textoOcultarTeclado}>Listo</Text>
           </Pressable>
         </View>
       ) : null}
@@ -392,28 +387,19 @@ function ResultadoExitoso({
             pressed ? styles.fotoResultadoPresionada : undefined,
           ]}
         >
-          <Image source={{ uri: resultado.foto_uri }} resizeMode="contain" style={styles.fotoFondo} />
+          <Image source={{ uri: resultado.foto_uri }} resizeMode="cover" style={styles.fotoFondo} />
           {resultado.overlay_mascara != null && marcoFoto != null ? (
             <MascaraPintada mascara={resultado.overlay_mascara} rectangulo={marcoFoto} />
           ) : null}
           {cajaMascara != null ? <EsquinasFoco rectangulo={cajaMascara} /> : null}
-          {esquinasMarcador != null ? (
-            <>
-              <MarcadorArucoLeido esquinas={esquinasMarcador} />
-              {posicionEtiquetaMarcador != null ? (
-                <Text pointerEvents="none" style={[styles.etiquetaMarcador, posicionEtiquetaMarcador]}>
-                  Cuadro leído
-                </Text>
-              ) : null}
-            </>
-          ) : null}
+          {esquinasMarcador != null ? <MarcadorArucoLeido esquinas={esquinasMarcador} /> : null}
           {marcadoNoDisponible ? (
             <View pointerEvents="none" style={styles.avisoMarcado}>
               <Text style={styles.avisoMarcadoTexto}>No se pudo mostrar el marcado sobre la foto.</Text>
             </View>
           ) : null}
-          <View pointerEvents="none" style={styles.ayudaAmpliar}>
-            <Text style={styles.ayudaAmpliarTexto}>Toca para ampliar</Text>
+          <View pointerEvents="none" style={[styles.chipCuadro, { top: insets.top + 12 }]}>
+            <Text style={styles.chipCuadroTexto}>{'\u2713 Cuadro leído'}</Text>
           </View>
         </Pressable>
 
@@ -425,37 +411,37 @@ function ResultadoExitoso({
               <Text style={styles.unidad}>kg</Text>
             </View>
             <Text style={styles.margenMetodo}>{`Margen habitual del método: ± ${margenKg} kg`}</Text>
-            <View style={styles.pruebaFoto}>
-              <View style={styles.puntoPrueba} />
-              <Text style={styles.pruebaDetalle}>Vaca y cuadro ubicados en la foto.</Text>
-            </View>
           </View>
 
           <View style={styles.formulario}>
-            <Text style={styles.etiquetaCampo}>Arete obligatorio</Text>
-            <TextInput
-              accessibilityLabel="Número de arete obligatorio"
-              autoCapitalize="characters"
-              inputMode="numeric"
-              keyboardType="numeric"
-              maxLength={6}
-              onChangeText={actualizarArete}
-              onBlur={() => actualizarFocoArete(false)}
-              onFocus={() => actualizarFocoArete(true)}
-              onPressIn={scrollAlFinal}
-              onSubmitEditing={() => void guardar()}
-              placeholder="Arete (ej. 8492)"
-              placeholderTextColor={colors.grisCalido}
-              ref={areteRef}
-              returnKeyType="done"
+            <Text style={styles.etiquetaCampo}>Arete del animal</Text>
+            <View
               style={[
-                styles.campo,
+                styles.campoContenedor,
                 areteEnfocado ? styles.campoEnfocado : undefined,
                 error === 'Ingrese el arete antes de guardar.' ? styles.campoError : undefined,
               ]}
-              value={arete}
-            />
-            <Text style={styles.notaTeclado}>Solo números — máx. 6 dígitos</Text>
+            >
+              <TextInput
+                accessibilityLabel="Número de arete del animal"
+                autoCapitalize="characters"
+                inputMode="numeric"
+                keyboardType="numeric"
+                maxLength={6}
+                onChangeText={actualizarArete}
+                onBlur={() => actualizarFocoArete(false)}
+                onFocus={() => actualizarFocoArete(true)}
+                onPressIn={scrollAlFinal}
+                onSubmitEditing={() => void guardar()}
+                placeholder="Escriba el arete"
+                placeholderTextColor={colors.grisCalido}
+                ref={areteRef}
+                returnKeyType="done"
+                style={styles.campo}
+                value={arete}
+              />
+              <Text style={styles.reglaCampo}>1–6 dígitos</Text>
+            </View>
             {aretesSugeridos.length > 0 ? (
               <View style={styles.sugerenciasBloque}>
                 <Text style={styles.sugerenciasEtiqueta}>Ya en el historial (toque para usar):</Text>
@@ -655,7 +641,7 @@ function FotoAmpliada({
 
   const cajaMascara =
     tamanoFoto != null && tamanoOriginal != null
-      ? mapearBbox(mascaraBbox, tamanoOriginal, tamanoFoto)
+      ? mapearBbox(mascaraBbox, tamanoOriginal, tamanoFoto, 'contain')
       : null;
   const marcoFoto =
     tamanoFoto != null && tamanoOriginal != null
@@ -663,11 +649,12 @@ function FotoAmpliada({
           { left: 0, top: 0, width: tamanoOriginal.width, height: tamanoOriginal.height },
           tamanoOriginal,
           tamanoFoto,
+          'contain',
         )
       : null;
   const esquinas =
     tamanoFoto != null && tamanoOriginal != null
-      ? mapearEsquinasMarcador(esquinasMarcador, tamanoOriginal, tamanoFoto)
+      ? mapearEsquinasMarcador(esquinasMarcador, tamanoOriginal, tamanoFoto, 'contain')
       : null;
   const cajaMarcador = esquinas != null ? rectanguloDesdePuntos(esquinas) : null;
   const posicionEtiqueta =
@@ -722,10 +709,13 @@ function FotoAmpliada({
   );
 }
 
+type ModoAjuste = 'contain' | 'cover';
+
 function mapearBbox(
   bbox: [number, number, number, number],
   original: Tamano,
   mostrado: Tamano,
+  modo: ModoAjuste,
 ): RectanguloMostrado {
   const [x0, y0, x1, y1] = bbox;
   return mapearRectangulo(
@@ -737,6 +727,7 @@ function mapearBbox(
     },
     original,
     mostrado,
+    modo,
   );
 }
 
@@ -744,12 +735,13 @@ function mapearEsquinasMarcador(
   esquinas: Point[],
   original: Tamano,
   mostrado: Tamano,
+  modo: ModoAjuste,
 ): PuntoMostrado[] | null {
   if (esquinas.length !== 4) {
     return null;
   }
 
-  return esquinas.map((esquina) => mapearPunto(esquina, original, mostrado));
+  return esquinas.map((esquina) => mapearPunto(esquina, original, mostrado, modo));
 }
 
 function rectanguloDesdePuntos(esquinas: PuntoMostrado[]): RectanguloMostrado {
@@ -763,8 +755,13 @@ function rectanguloDesdePuntos(esquinas: PuntoMostrado[]): RectanguloMostrado {
   return { left, top, width: right - left, height: bottom - top };
 }
 
-function mapearPunto(punto: Point, original: Tamano, mostrado: Tamano): PuntoMostrado {
-  const { escala, offsetX, offsetY } = calcularAjusteAspectFit(original, mostrado);
+function mapearPunto(
+  punto: Point,
+  original: Tamano,
+  mostrado: Tamano,
+  modo: ModoAjuste,
+): PuntoMostrado {
+  const { escala, offsetX, offsetY } = calcularAjuste(original, mostrado, modo);
 
   return {
     x: punto.x * escala + offsetX,
@@ -776,8 +773,9 @@ function mapearRectangulo(
   rectangulo: RectanguloMostrado,
   original: Tamano,
   mostrado: Tamano,
+  modo: ModoAjuste,
 ): RectanguloMostrado {
-  const { escala, offsetX, offsetY } = calcularAjusteAspectFit(original, mostrado);
+  const { escala, offsetX, offsetY } = calcularAjuste(original, mostrado, modo);
 
   return {
     left: rectangulo.left * escala + offsetX,
@@ -787,10 +785,15 @@ function mapearRectangulo(
   };
 }
 
-function calcularAjusteAspectFit(original: Tamano, mostrado: Tamano) {
+// R1 made the inline photo `cover`, so the overlay geometry has to follow the same
+// scale the image uses; the fullscreen modal is still `contain`.
+function calcularAjuste(original: Tamano, mostrado: Tamano, modo: ModoAjuste) {
   const escalaHorizontal = mostrado.width / original.width;
   const escalaVertical = mostrado.height / original.height;
-  const escala = Math.min(escalaHorizontal, escalaVertical);
+  const escala =
+    modo === 'cover'
+      ? Math.max(escalaHorizontal, escalaVertical)
+      : Math.min(escalaHorizontal, escalaVertical);
   const anchoRenderizado = original.width * escala;
   const altoRenderizado = original.height * escala;
 
@@ -806,8 +809,9 @@ function calcularPosicionEtiquetaMarcador(
   cajaMascara: RectanguloMostrado | null,
   contenedor: Tamano,
 ): Pick<RectanguloMostrado, 'left' | 'top'> {
-  const anchoEtiqueta = 102;
-  const altoEtiqueta = 26;
+  // Kept in step with styles.etiquetaMarcador, which R1 grew to 14 px.
+  const anchoEtiqueta = 118;
+  const altoEtiqueta = 32;
   const margen = 8;
   const centrarVertical = rectangulo.top + (rectangulo.height - altoEtiqueta) / 2;
   const centrarHorizontal = rectangulo.left + (rectangulo.width - anchoEtiqueta) / 2;
@@ -858,7 +862,7 @@ const styles = StyleSheet.create({
   },
   fotoResultado: {
     position: 'relative',
-    height: 212,
+    height: 290,
     overflow: 'hidden',
     backgroundColor: colors.bosqueCamara,
   },
@@ -868,19 +872,19 @@ const styles = StyleSheet.create({
   fotoFondo: {
     ...StyleSheet.absoluteFill,
   },
-  ayudaAmpliar: {
+  chipCuadro: {
     position: 'absolute',
-    right: 8,
-    bottom: 8,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-    borderRadius: radius.chip,
-    backgroundColor: colors.bosqueEtiqueta,
+    right: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: colors.maiz,
   },
-  ayudaAmpliarTexto: {
-    color: colors.crema,
+  chipCuadroTexto: {
+    color: colors.bosque,
     fontFamily: font.bold,
-    fontSize: 11,
+    fontSize: 14,
+    lineHeight: 18,
   },
   mascaraPintada: {
     position: 'absolute',
@@ -952,13 +956,13 @@ const styles = StyleSheet.create({
   etiquetaMarcador: {
     position: 'absolute',
     zIndex: 1,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
     color: colors.bosque,
     backgroundColor: colors.maiz,
     fontFamily: font.bold,
-    fontSize: 11,
+    fontSize: 14,
   },
   avisoMarcado: {
     position: 'absolute',
@@ -1094,7 +1098,7 @@ const styles = StyleSheet.create({
   textoOcultarTeclado: {
     color: colors.salviaClara,
     fontFamily: font.bold,
-    fontSize: 13,
+    fontSize: 15,
   },
   panelResultado: {
     paddingTop: 12,
@@ -1107,6 +1111,7 @@ const styles = StyleSheet.create({
   overline: {
     ...type.overline,
     color: colors.tierra,
+    fontSize: 14,
   },
   filaPeso: {
     flexDirection: 'row',
@@ -1118,14 +1123,15 @@ const styles = StyleSheet.create({
   peso: {
     ...type.pesoGigante,
     color: colors.verdeTinta,
-    fontSize: 60,
-    lineHeight: 64,
+    fontSize: 96,
+    letterSpacing: -5,
+    lineHeight: 96,
   },
   unidad: {
     color: colors.verdeTinta,
     fontFamily: font.bold,
-    fontSize: 26,
-    lineHeight: 32,
+    fontSize: 32,
+    lineHeight: 36,
   },
   margenMetodo: {
     marginTop: 4,
@@ -1135,29 +1141,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
   },
-  pruebaFoto: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 9,
-    marginTop: 6,
-    paddingVertical: 6,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: colors.bordeTarjeta,
-  },
-  puntoPrueba: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: colors.mascara,
-  },
-  pruebaDetalle: {
-    flex: 1,
-    color: colors.verdeTinta,
-    fontFamily: font.regular,
-    fontSize: 13,
-    lineHeight: 18,
-  },
   formulario: {
     gap: 10,
     paddingTop: 10,
@@ -1165,22 +1148,34 @@ const styles = StyleSheet.create({
   etiquetaCampo: {
     color: colors.tierra,
     fontFamily: font.bold,
-    fontSize: 11,
+    fontSize: 13,
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
-  campo: {
+  campoContenedor: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     height: 56,
-    flex: 1,
-    minWidth: 0,
     paddingHorizontal: 14,
     borderWidth: 2,
     borderColor: colors.bordeTarjeta,
     borderRadius: radius.input,
-    color: colors.verdeTinta,
     backgroundColor: colors.tarjeta,
+  },
+  campo: {
+    flex: 1,
+    minWidth: 0,
+    height: '100%',
+    paddingVertical: 0,
+    color: colors.verdeTinta,
     fontFamily: font.regular,
     fontSize: 18,
+  },
+  reglaCampo: {
+    color: colors.grisCalido,
+    fontFamily: font.bold,
+    fontSize: 13,
   },
   campoError: {
     borderColor: colors.error,
@@ -1193,12 +1188,6 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     shadowOffset: { width: 0, height: 0 },
     elevation: 3,
-  },
-  notaTeclado: {
-    color: colors.grisCalido,
-    fontFamily: font.regular,
-    fontSize: 12,
-    lineHeight: 16,
   },
   sugerenciasBloque: {
     gap: 8,
