@@ -757,7 +757,7 @@ const styles = StyleSheet.create({
   },
   delta: {
     fontFamily: font.bold,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 18,
   },
   deltaSube: {
@@ -831,15 +831,15 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     color: colors.tierra,
     fontFamily: font.regular,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 18,
     textAlign: 'center',
   },
   etiquetaEstimacion: {
     color: colors.tierra,
     fontFamily: font.bold,
-    fontSize: 13,
-    letterSpacing: 1.3,
+    fontSize: 15,
+    letterSpacing: 1.0,
   },
   estadoVacio: {
     flex: 1,

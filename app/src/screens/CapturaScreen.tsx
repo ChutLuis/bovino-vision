@@ -301,8 +301,8 @@ const styles = StyleSheet.create({
   overline: {
     color: colors.maiz,
     fontFamily: font.bold,
-    fontSize: 13,
-    letterSpacing: 1.5,
+    fontSize: 15,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
   titulo: {
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
   ejemploTextoArriba: {
     color: colors.maiz,
     fontFamily: font.bold,
-    fontSize: 14,
+    fontSize: 15,
   },
   ejemploEtiquetaAbajo: {
     position: 'absolute',
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
   ejemploTextoAbajo: {
     color: colors.crema,
     fontFamily: font.bold,
-    fontSize: 14,
+    fontSize: 15,
   },
   enlaceGuia: {
     alignSelf: 'flex-start',
@@ -480,6 +480,6 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   deshabilitado: {
-    opacity: 0.5,
+    opacity: 0.7,
   },
 });

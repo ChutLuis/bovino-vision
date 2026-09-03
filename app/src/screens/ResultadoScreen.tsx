@@ -207,7 +207,7 @@ function posicionZonaRechazo(
   contenedor: Tamano,
 ): { left: number; top: number } {
   const margen = 20;
-  const anchoEtiqueta = 200;
+  const anchoEtiqueta = 210;
   const izquierdaMaxima = Math.max(margen, contenedor.width - anchoEtiqueta - margen);
   const arribaMaxima = Math.max(margen, contenedor.height * 0.55 - LADO_ZONA_RECHAZO);
 
@@ -916,8 +916,8 @@ function calcularPosicionEtiquetaMarcador(
   contenedor: Tamano,
 ): Pick<RectanguloMostrado, 'left' | 'top'> {
   // Kept in step with styles.etiquetaMarcador, which R1 grew to 14 px.
-  const anchoEtiqueta = 118;
-  const altoEtiqueta = 32;
+  const anchoEtiqueta = 124;
+  const altoEtiqueta = 34;
   const margen = 8;
   const centrarVertical = rectangulo.top + (rectangulo.height - altoEtiqueta) / 2;
   const centrarHorizontal = rectangulo.left + (rectangulo.width - anchoEtiqueta) / 2;
@@ -989,7 +989,7 @@ const styles = StyleSheet.create({
   chipCuadroTexto: {
     color: colors.bosque,
     fontFamily: font.bold,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 18,
   },
   mascaraPintada: {
@@ -1068,7 +1068,7 @@ const styles = StyleSheet.create({
     color: colors.bosque,
     backgroundColor: colors.maiz,
     fontFamily: font.bold,
-    fontSize: 14,
+    fontSize: 15,
   },
   avisoMarcado: {
     position: 'absolute',
@@ -1218,7 +1218,8 @@ const styles = StyleSheet.create({
   overline: {
     ...type.overline,
     color: colors.tierra,
-    fontSize: 14,
+    fontSize: 15,
+    letterSpacing: 1.2,
   },
   filaPeso: {
     flexDirection: 'row',
@@ -1255,7 +1256,7 @@ const styles = StyleSheet.create({
   etiquetaCampo: {
     color: colors.tierra,
     fontFamily: font.bold,
-    fontSize: 13,
+    fontSize: 15,
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
@@ -1282,7 +1283,7 @@ const styles = StyleSheet.create({
   reglaCampo: {
     color: colors.grisCalido,
     fontFamily: font.bold,
-    fontSize: 13,
+    fontSize: 15,
   },
   campoError: {
     borderColor: colors.error,
@@ -1355,8 +1356,8 @@ const styles = StyleSheet.create({
     left: 22,
     color: colors.maiz,
     fontFamily: font.bold,
-    fontSize: 13,
-    letterSpacing: 1.7,
+    fontSize: 15,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
     textShadowColor: colors.bosqueCamara,
     textShadowOffset: { width: 0, height: 1 },
@@ -1382,7 +1383,7 @@ const styles = StyleSheet.create({
     color: colors.bosque,
     backgroundColor: colors.maiz,
     fontFamily: font.bold,
-    fontSize: 14,
+    fontSize: 15,
     lineHeight: 18,
   },
   rechazoPanel: {

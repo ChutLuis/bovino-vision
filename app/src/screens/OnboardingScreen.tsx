@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
     color: colors.maiz,
     fontFamily: font.bold,
     fontSize: 15,
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
   titulo: {

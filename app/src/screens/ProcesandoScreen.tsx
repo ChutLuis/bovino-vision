@@ -227,8 +227,8 @@ const styles = StyleSheet.create({
   overline: {
     color: colors.maiz,
     fontFamily: font.bold,
-    fontSize: 13,
-    letterSpacing: 1.7,
+    fontSize: 15,
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
   titulo: {
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
   pasoActual: {
     color: colors.maiz,
     fontFamily: font.bold,
-    fontSize: 13,
+    fontSize: 15,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
@@ -309,12 +309,12 @@ const styles = StyleSheet.create({
   check: {
     color: colors.bosque,
     fontFamily: font.black,
-    fontSize: 14,
+    fontSize: 15,
   },
   indiceEtapa: {
     color: colors.crema,
     fontFamily: font.bold,
-    fontSize: 13,
+    fontSize: 15,
   },
   textoEtapa: {
     flex: 1,
