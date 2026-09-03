@@ -28,7 +28,8 @@ export const colors = {
   error: '#b3402a',
   overlayProcesando: 'rgba(13,31,19,0.9)',
   overlayProcesandoLigero: 'rgba(13,31,19,0.34)',
-  overlayRechazo: 'rgba(24,20,12,0.88)',
+  // Handoff X1: the photo has to stay visible so the user compares it with what is asked.
+  overlayRechazo: 'rgba(13,31,19,0.3)',
   guia: 'rgba(255,255,255,0.95)',
   guiaSuelo: 'rgba(255,255,255,0.55)',
   bosqueInstruccion: 'rgba(13,31,19,0.82)',

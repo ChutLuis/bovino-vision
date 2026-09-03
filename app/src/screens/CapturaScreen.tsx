@@ -1,5 +1,5 @@
 import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +15,7 @@ const FOTO_EJEMPLO = require('../../assets/foto-378-limpia.jpg');
 export function CapturaScreen({ navigation, route }: CapturaScreenProps) {
   const aretePrellenado = route.params?.aretePrellenado;
   const [ocupado, setOcupado] = useState(false);
+  const galeriaAbierta = useRef(false);
   const insets = useSafeAreaInsets();
 
   const tomarFoto = async (): Promise<void> => {
@@ -90,6 +91,24 @@ export function CapturaScreen({ navigation, route }: CapturaScreenProps) {
     const foto = fotoDesdeAsset(resultado.assets[0], origen);
     navigation.navigate('Procesando', { foto, aretePrellenado });
   };
+
+  // Coming back from a rejected gallery photo reopens the gallery, so the user does
+  // not have to remember which way they came in (handoff X4).
+  useEffect(() => {
+    if (route.params?.abrirGaleria !== true) {
+      // Releasing the guard here is what lets a second rejection reopen the gallery.
+      galeriaAbierta.current = false;
+      return;
+    }
+
+    if (galeriaAbierta.current) {
+      return;
+    }
+
+    galeriaAbierta.current = true;
+    navigation.setParams({ abrirGaleria: false });
+    void elegirGaleria();
+  }, [route.params?.abrirGaleria]);
 
   return (
     <View style={styles.pantalla}>

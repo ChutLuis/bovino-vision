@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useEffect, useRef, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, type EdgeInsets } from 'react-native-safe-area-context';
 
 import {
   guardarAnimal,
@@ -23,18 +23,11 @@ import {
   type AnimalConResumen,
 } from '../data/db/dao';
 import { eliminarFotoPrivada, guardarFotoPrivada } from '../data/photos';
-import type { CausaRechazo, EstimacionExitosa } from '../domain/types';
+import type { CausaRechazo, EstimacionExitosa, EstimacionRechazada } from '../domain/types';
 import type { PesadaGuardada, ResultadoScreenProps } from '../navigation/types';
 import type { MascaraVisual, Point } from '../vision/types';
 import { BotonPrimario, BotonSecundario } from '../ui/Botones';
 import { colors, font, radius, type } from '../ui/theme';
-
-const MENSAJES_RECHAZO: Record<CausaRechazo, string> = {
-  sin_vaca: 'No se ve la vaca completa. Aléjese un poco y tome la foto de lado.',
-  sin_marcador: 'No se ve el cuadro de referencia. Revise que esté visible y limpio.',
-  marcador_ilegible:
-    'El cuadro de referencia se ve borroso o de lado. Póngalo derecho, junto al costado de la vaca.',
-};
 
 const TITULOS_RECHAZO: Record<CausaRechazo, string> = {
   sin_vaca: 'No se ve la vaca completa',
@@ -42,6 +35,7 @@ const TITULOS_RECHAZO: Record<CausaRechazo, string> = {
   marcador_ilegible: 'El cuadro no se puede leer',
 };
 
+// One paragraph only: the title says what is wrong, this says what to do (handoff X3).
 const CONSEJOS_RECHAZO: Record<CausaRechazo, string> = {
   sin_vaca:
     'Camine unos pasos hacia atrás. La vaca debe caber entera en la pantalla, de la cabeza a la cola.',
@@ -50,6 +44,15 @@ const CONSEJOS_RECHAZO: Record<CausaRechazo, string> = {
   marcador_ilegible:
     'Enderece el cuadro para que mire hacia la cámara y sostenga el teléfono firme al disparar.',
 };
+
+// What the dotted square marks: where the cuadro should have been (handoff X2).
+const ETIQUETAS_ZONA: Record<CausaRechazo, string> = {
+  sin_vaca: 'Aquí falta la vaca completa',
+  sin_marcador: 'Aquí falta el cuadro',
+  marcador_ilegible: 'Aquí está el cuadro, pero no se lee',
+};
+
+const LADO_ZONA_RECHAZO = 112;
 
 interface Tamano {
   width: number;
@@ -86,30 +89,14 @@ export function ResultadoScreen({ navigation, route }: ResultadoScreenProps) {
 
   if (!resultado.ok) {
     return (
-      <View style={styles.rechazoPantalla}>
-        <StatusBar style="light" />
-        <Image source={{ uri: resultado.foto_uri }} resizeMode="cover" style={styles.fotoFondo} />
-        <View pointerEvents="none" style={styles.overlayRechazo} />
-        <View
-          style={[
-            styles.rechazoContenido,
-            { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 16 },
-          ]}
-        >
-          <View style={styles.rechazoCentro}>
-            <View style={styles.rechazoIcono}>
-              <Text style={styles.rechazoSigno}>!</Text>
-            </View>
-            <Text style={styles.rechazoTitulo}>{TITULOS_RECHAZO[resultado.causa]}</Text>
-            <Text style={styles.rechazoMensaje}>{MENSAJES_RECHAZO[resultado.causa]}</Text>
-            <View style={styles.consejoTarjeta}>
-              <Text style={styles.consejoOverline}>Cómo corregirlo</Text>
-              <Text style={styles.consejoTexto}>{CONSEJOS_RECHAZO[resultado.causa]}</Text>
-            </View>
-          </View>
-          <BotonPrimario titulo="Volver a tomar" onPress={() => navigation.popToTop()} />
-        </View>
-      </View>
+      <Rechazo
+        insets={insets}
+        resultado={resultado}
+        onElegirGaleria={() =>
+          navigation.navigate('Captura', { aretePrellenado, abrirGaleria: true })
+        }
+        onVolverATomar={() => navigation.popToTop()}
+      />
     );
   }
 
@@ -122,6 +109,125 @@ export function ResultadoScreen({ navigation, route }: ResultadoScreenProps) {
       insetInferior={insets.bottom}
     />
   );
+}
+
+interface RechazoProps {
+  insets: EdgeInsets;
+  resultado: EstimacionRechazada;
+  onElegirGaleria: () => void;
+  onVolverATomar: () => void;
+}
+
+function Rechazo({ insets, resultado, onElegirGaleria, onVolverATomar }: RechazoProps) {
+  const [tamanoPantalla, setTamanoPantalla] = useState<Tamano | null>(null);
+  const [tamanoOriginal, setTamanoOriginal] = useState<Tamano | null>(null);
+
+  useEffect(() => {
+    let vigente = true;
+
+    Image.getSize(
+      resultado.foto_uri,
+      (width, height) => {
+        if (vigente) {
+          setTamanoOriginal({ width, height });
+        }
+      },
+      () => {
+        if (vigente) {
+          // Without the photo size the marked zone falls back to the left side.
+          setTamanoOriginal(null);
+        }
+      },
+    );
+
+    return () => {
+      vigente = false;
+    };
+  }, [resultado.foto_uri]);
+
+  const medirPantalla = ({ nativeEvent }: LayoutChangeEvent): void => {
+    const { width, height } = nativeEvent.layout;
+    setTamanoPantalla((actual) => {
+      if (actual?.width === width && actual.height === height) {
+        return actual;
+      }
+      return { width, height };
+    });
+  };
+
+  const cajaAnimal =
+    resultado.bbox_original_px != null && tamanoOriginal != null && tamanoPantalla != null
+      ? mapearBbox(resultado.bbox_original_px, tamanoOriginal, tamanoPantalla, 'cover')
+      : null;
+  const zona = tamanoPantalla == null ? null : posicionZonaRechazo(cajaAnimal, tamanoPantalla);
+
+  return (
+    <View onLayout={medirPantalla} style={styles.rechazoPantalla}>
+      <StatusBar style="light" />
+      <Image source={{ uri: resultado.foto_uri }} resizeMode="cover" style={styles.fotoFondo} />
+      <View pointerEvents="none" style={styles.overlayRechazo} />
+
+      <Text style={[styles.rechazoOverline, { top: insets.top + 20 }]}>Su foto</Text>
+
+      {zona != null ? (
+        <View pointerEvents="none" style={[styles.zonaRechazo, zona]}>
+          <View style={styles.zonaRecuadro} />
+          <Text style={styles.zonaEtiqueta}>{ETIQUETAS_ZONA[resultado.causa]}</Text>
+        </View>
+      ) : null}
+
+      <View style={[styles.rechazoPanel, { paddingBottom: insets.bottom + 16 }]}>
+        <View style={styles.rechazoFila}>
+          <View style={styles.rechazoIcono}>
+            <Text style={styles.rechazoSigno}>!</Text>
+          </View>
+          <Text style={styles.rechazoTitulo}>{TITULOS_RECHAZO[resultado.causa]}</Text>
+        </View>
+        <Text style={styles.rechazoConsejo}>{CONSEJOS_RECHAZO[resultado.causa]}</Text>
+        <View style={styles.rechazoAcciones}>
+          <BotonPrimario alto={66} titulo="Volver a tomar" onPress={onVolverATomar} />
+          {resultado.origen === 'galeria' ? (
+            <BotonSecundario
+              alto={56}
+              tamanioTexto={18}
+              titulo="Elegir otra foto de la galería"
+              onPress={onElegirGaleria}
+            />
+          ) : null}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// Beside the animal when it was detected, left of centre otherwise; always clear of
+// the bottom panel (handoff X2).
+function posicionZonaRechazo(
+  caja: RectanguloMostrado | null,
+  contenedor: Tamano,
+): { left: number; top: number } {
+  const margen = 20;
+  const anchoEtiqueta = 200;
+  const izquierdaMaxima = Math.max(margen, contenedor.width - anchoEtiqueta - margen);
+  const arribaMaxima = Math.max(margen, contenedor.height * 0.55 - LADO_ZONA_RECHAZO);
+
+  if (caja == null) {
+    return {
+      left: margen * 2,
+      top: Math.min(contenedor.height * 0.38 - LADO_ZONA_RECHAZO / 2, arribaMaxima),
+    };
+  }
+
+  const espacioDerecha = contenedor.width - (caja.left + caja.width);
+  const izquierda =
+    espacioDerecha >= LADO_ZONA_RECHAZO + margen
+      ? caja.left + caja.width + 8
+      : caja.left - LADO_ZONA_RECHAZO - 8;
+
+  return {
+    left: Math.min(Math.max(margen, izquierda), izquierdaMaxima),
+    top: Math.min(Math.max(margen, caja.top + caja.height * 0.55 - LADO_ZONA_RECHAZO / 2), arribaMaxima),
+  };
 }
 
 interface ResultadoExitosoProps {
@@ -1243,67 +1349,88 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     backgroundColor: colors.overlayRechazo,
   },
-  rechazoContenido: {
-    flex: 1,
-    paddingHorizontal: 28,
+  rechazoOverline: {
+    position: 'absolute',
+    left: 22,
+    color: colors.maiz,
+    fontFamily: font.bold,
+    fontSize: 13,
+    letterSpacing: 1.7,
+    textTransform: 'uppercase',
+    textShadowColor: colors.bosqueCamara,
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
-  rechazoCentro: {
-    flex: 1,
+  zonaRechazo: {
+    position: 'absolute',
+    alignItems: 'flex-start',
+  },
+  zonaRecuadro: {
+    width: LADO_ZONA_RECHAZO,
+    height: LADO_ZONA_RECHAZO,
+    borderWidth: 3,
+    borderStyle: 'dashed',
+    borderColor: colors.maiz,
+    borderRadius: 10,
+  },
+  zonaEtiqueta: {
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    color: colors.bosque,
+    backgroundColor: colors.maiz,
+    fontFamily: font.bold,
+    fontSize: 14,
+    lineHeight: 18,
+  },
+  rechazoPanel: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    left: 0,
+    gap: 14,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    borderTopLeftRadius: radius.tarjeta,
+    borderTopRightRadius: radius.tarjeta,
+    backgroundColor: colors.bosqueProfundo,
+  },
+  rechazoFila: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 14,
   },
   rechazoIcono: {
-    width: 92,
-    height: 92,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 28,
-    borderRadius: 46,
+    borderRadius: 22,
     backgroundColor: colors.maiz,
   },
   rechazoSigno: {
     color: colors.bosque,
     fontFamily: font.black,
-    fontSize: 54,
-    lineHeight: 60,
+    fontSize: 28,
+    lineHeight: 32,
   },
   rechazoTitulo: {
+    flex: 1,
     color: colors.crema,
     fontFamily: font.black,
-    fontSize: 32,
-    lineHeight: 38,
-    textAlign: 'center',
-  },
-  rechazoMensaje: {
-    marginTop: 18,
-    color: colors.textoRechazo,
-    fontFamily: font.regular,
-    fontSize: 22,
+    fontSize: 28,
+    letterSpacing: -0.8,
     lineHeight: 32,
-    textAlign: 'center',
   },
-  consejoTarjeta: {
-    width: '100%',
-    marginTop: 32,
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    borderWidth: 2,
-    borderColor: colors.cremaTarjetaBorde,
-    borderRadius: 18,
-    backgroundColor: colors.cremaTarjetaFondo,
-  },
-  consejoOverline: {
-    marginBottom: 8,
-    color: colors.maiz,
-    fontFamily: font.bold,
-    fontSize: 15,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  consejoTexto: {
+  rechazoConsejo: {
     color: colors.crema,
     fontFamily: font.regular,
-    fontSize: 20,
-    lineHeight: 29,
+    fontSize: 19,
+    lineHeight: 27,
+  },
+  rechazoAcciones: {
+    gap: 10,
+    marginTop: 4,
   },
 });

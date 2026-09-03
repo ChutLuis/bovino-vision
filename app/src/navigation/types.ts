@@ -10,7 +10,7 @@ export interface PesadaGuardada {
 export type RootStackParamList = {
   Splash: undefined;
   Onboarding: undefined;
-  Captura: { aretePrellenado?: string } | undefined;
+  Captura: { aretePrellenado?: string; abrirGaleria?: boolean } | undefined;
   Procesando: { foto: FotoEntrada; aretePrellenado?: string };
   Resultado: { resultado: ResultadoEstimacion; aretePrellenado?: string };
   Historial: { guardado?: PesadaGuardada } | undefined;

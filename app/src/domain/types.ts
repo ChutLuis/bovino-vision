@@ -39,6 +39,14 @@ export interface EstimacionRechazada {
   ok: false;
   foto_uri: string;
   causa: CausaRechazo;
+  /** Lets the rejection screen offer a way back to the gallery (handoff X4). */
+  origen: OrigenFoto;
+  /**
+   * Where the animal was found, when it was found at all: the rejection screen
+   * marks the missing square next to its flank (handoff X2). Absent for
+   * `sin_vaca`, which is precisely the case with no detection.
+   */
+  bbox_original_px?: [number, number, number, number];
 }
 
 export type ResultadoEstimacion = EstimacionExitosa | EstimacionRechazada;

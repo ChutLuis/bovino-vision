@@ -41,18 +41,34 @@ export async function estimarPeso(
     segmentacion.selected_bbox_original_px == null ||
     segmentacion.selected_confidence == null
   ) {
-    return { ok: false, foto_uri: foto.uri, causa: 'sin_vaca' };
+    return { ok: false, foto_uri: foto.uri, causa: 'sin_vaca', origen: foto.origen };
   }
 
   await dependencias.notificar_etapa?.('leyendo_marcador');
   const marcador = detectAruco(decoded);
 
+  // The animal was located before the square was read, so the rejection can point
+  // at where the square should have been.
+  const bboxAnimal = segmentacion.selected_bbox_original_px;
+
   if (!marcador.decoded || marcador.marker_id !== 0) {
-    return { ok: false, foto_uri: foto.uri, causa: 'sin_marcador' };
+    return {
+      ok: false,
+      foto_uri: foto.uri,
+      causa: 'sin_marcador',
+      origen: foto.origen,
+      bbox_original_px: bboxAnimal,
+    };
   }
 
   if (marcador.cm_per_px == null || marcador.corners == null || marcador.corners.length !== 4) {
-    return { ok: false, foto_uri: foto.uri, causa: 'marcador_ilegible' };
+    return {
+      ok: false,
+      foto_uri: foto.uri,
+      causa: 'marcador_ilegible',
+      origen: foto.origen,
+      bbox_original_px: bboxAnimal,
+    };
   }
 
   await dependencias.notificar_etapa?.('calculando_peso');
