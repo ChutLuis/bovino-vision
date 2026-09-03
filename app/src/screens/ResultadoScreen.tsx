@@ -482,8 +482,8 @@ function ResultadoExitoso({
         style={styles.resultadoScroll}
       >
         <Pressable
-          accessibilityHint="Abre una vista de pantalla completa con la segmentación y el marcador."
-          accessibilityLabel="Ampliar foto con segmentación"
+          accessibilityHint="Abre la foto en grande, con la vaca y el cuadro señalados."
+          accessibilityLabel="Ver la foto en grande"
           accessibilityRole="button"
           android_ripple={{ color: colors.rippleSalvia }}
           onLayout={actualizarTamanoFoto}
@@ -501,7 +501,7 @@ function ResultadoExitoso({
           {esquinasMarcador != null ? <MarcadorArucoLeido esquinas={esquinasMarcador} /> : null}
           {marcadoNoDisponible ? (
             <View pointerEvents="none" style={styles.avisoMarcado}>
-              <Text style={styles.avisoMarcadoTexto}>No se pudo mostrar el marcado sobre la foto.</Text>
+              <Text style={styles.avisoMarcadoTexto}>No se pudo señalar la vaca ni el cuadro sobre la foto.</Text>
             </View>
           ) : null}
           <View pointerEvents="none" style={[styles.chipCuadro, { top: insets.top + 12 }]}>
@@ -801,7 +801,7 @@ function FotoAmpliada({
         ) : null}
         {marcadoNoDisponible ? (
           <View pointerEvents="none" style={styles.avisoMarcado}>
-            <Text style={styles.avisoMarcadoTexto}>No se pudo mostrar el marcado sobre la foto.</Text>
+            <Text style={styles.avisoMarcadoTexto}>No se pudo señalar la vaca ni el cuadro sobre la foto.</Text>
           </View>
         ) : null}
       </View>
@@ -1083,7 +1083,8 @@ const styles = StyleSheet.create({
   avisoMarcadoTexto: {
     color: colors.crema,
     fontFamily: font.medium,
-    fontSize: 14,
+    fontSize: 15,
+    lineHeight: 20,
     textAlign: 'center',
   },
   modalFotoPantalla: {
@@ -1110,10 +1111,10 @@ const styles = StyleSheet.create({
   },
   subtituloFotoAmpliada: {
     marginTop: 1,
-    color: colors.salviaClara,
+    color: colors.textoClaroSec,
     fontFamily: font.regular,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 15,
+    lineHeight: 20,
   },
   botonCerrarFoto: {
     width: 56,
@@ -1152,8 +1153,8 @@ const styles = StyleSheet.create({
   pieFotoAmpliadaTexto: {
     color: colors.textoClaroSec,
     fontFamily: font.regular,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 15,
+    lineHeight: 20,
     textAlign: 'center',
   },
   barraResumenCompacta: {

@@ -949,7 +949,7 @@ const styles = StyleSheet.create({
   textoLimpiarBusqueda: {
     color: colors.tierra,
     fontFamily: font.bold,
-    fontSize: 14,
+    fontSize: 16,
   },
   botonResetBusqueda: {
     marginTop: 14,
@@ -979,8 +979,8 @@ const styles = StyleSheet.create({
   notaExportacion: {
     color: colors.tierra,
     fontFamily: font.regular,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 15,
+    lineHeight: 20,
     textAlign: 'center',
   },
 });
