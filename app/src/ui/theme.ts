@@ -24,6 +24,7 @@ export const colors = {
   maiz: '#ffc226',
   maizSombra: '#cf9a12',
   mascara: '#58d06b',
+  exito: '#1c7a37',
   error: '#b3402a',
   overlayProcesando: 'rgba(13,31,19,0.9)',
   overlayProcesandoLigero: 'rgba(13,31,19,0.34)',

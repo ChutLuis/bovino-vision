@@ -20,12 +20,14 @@ import {
   type Estimacion,
 } from '../data/db/dao';
 import { exportarCsv } from '../data/export/csv';
-import type { HistorialScreenProps } from '../navigation/types';
+import type { HistorialScreenProps, PesadaGuardada } from '../navigation/types';
 import { BotonPrimario, BotonSecundario } from '../ui/Botones';
 import { colors, font, radius } from '../ui/theme';
 
-export function HistorialScreen({ navigation }: HistorialScreenProps) {
+export function HistorialScreen({ navigation, route }: HistorialScreenProps) {
   const insets = useSafeAreaInsets();
+  const guardado = route.params?.guardado;
+  const [confirmacion, setConfirmacion] = useState<PesadaGuardada | null>(guardado ?? null);
   const [animales, setAnimales] = useState<AnimalConResumen[]>([]);
   const [seleccionado, setSeleccionado] = useState<AnimalConResumen | null>(null);
   const [estimaciones, setEstimaciones] = useState<Estimacion[]>([]);
@@ -51,6 +53,18 @@ export function HistorialScreen({ navigation }: HistorialScreenProps) {
   useEffect(() => {
     void cargarAnimales();
   }, []);
+
+  // The band answers "did it save?" for three seconds and then gets out of the way (handoff H1).
+  useEffect(() => {
+    if (guardado == null) {
+      return;
+    }
+
+    setConfirmacion(guardado);
+    const temporizador = setTimeout(() => setConfirmacion(null), 3000);
+
+    return () => clearTimeout(temporizador);
+  }, [guardado]);
 
   const seleccionarAnimal = async (animal: AnimalConResumen): Promise<void> => {
     setSeleccionado(animal);
@@ -119,12 +133,7 @@ export function HistorialScreen({ navigation }: HistorialScreenProps) {
           <Text style={styles.chevron}>{'\u2039'}</Text>
         </Pressable>
         <View style={styles.titulosEncabezado}>
-          <Text
-            adjustsFontSizeToFit={true}
-            minimumFontScale={0.7}
-            numberOfLines={1}
-            style={styles.tituloEncabezado}
-          >
+          <Text numberOfLines={1} style={styles.tituloEncabezado}>
             {titulo}
           </Text>
           <Text numberOfLines={1} style={styles.subtituloEncabezado}>
@@ -161,6 +170,17 @@ export function HistorialScreen({ navigation }: HistorialScreenProps) {
               <Text style={styles.textoLimpiarBusqueda}>✕</Text>
             </Pressable>
           ) : null}
+        </View>
+      ) : null}
+
+      {!enDetalle && confirmacion != null ? (
+        <View style={styles.banda}>
+          <View style={styles.bandaIcono}>
+            <Text style={styles.bandaCheck}>{'\u2713'}</Text>
+          </View>
+          <Text style={styles.bandaTexto}>
+            {`Pesada guardada · Arete ${confirmacion.arete} · ${confirmacion.pesoKg} kg`}
+          </Text>
         </View>
       ) : null}
 
@@ -205,13 +225,19 @@ export function HistorialScreen({ navigation }: HistorialScreenProps) {
               tintColor={colors.verdeMedio}
             />
           }
-          renderItem={({ item }) => <TarjetaAnimal animal={item} onPress={() => void seleccionarAnimal(item)} />}
+          renderItem={({ item }) => (
+            <TarjetaAnimal
+              animal={item}
+              destacada={confirmacion?.arete === item.arete}
+              onPress={() => void seleccionarAnimal(item)}
+            />
+          )}
           showsVerticalScrollIndicator={false}
         />
       )}
 
       <View style={[styles.pie, { paddingBottom: insets.bottom + 16 }]}>
-        <BotonPrimario alto={70} titulo="Nueva estimación" onPress={() => navigation.popToTop()} />
+        <BotonPrimario alto={70} titulo="Pesar otro animal" onPress={() => navigation.popToTop()} />
         <BotonSecundario
           disabled={totalPesadas === 0}
           alto={56}
@@ -229,54 +255,79 @@ export function HistorialScreen({ navigation }: HistorialScreenProps) {
 
 interface TarjetaAnimalProps {
   animal: AnimalConResumen;
+  destacada?: boolean;
   onPress: () => void;
 }
 
-function TarjetaAnimal({ animal, onPress }: TarjetaAnimalProps) {
+function TarjetaAnimal({ animal, destacada = false, onPress }: TarjetaAnimalProps) {
   return (
     <Pressable
-      accessibilityLabel={`Ver estimaciones del arete ${animal.arete}`}
+      accessibilityLabel={`Ver pesadas del arete ${animal.arete}`}
       accessibilityRole="button"
       android_ripple={{ color: colors.rippleTarjeta }}
       onPress={onPress}
-      style={({ pressed }) => [styles.tarjetaAnimal, pressed ? styles.tarjetaPresionada : undefined]}
+      style={({ pressed }) => [
+        styles.tarjetaAnimal,
+        destacada ? styles.tarjetaDestacada : undefined,
+        pressed ? styles.tarjetaPresionada : undefined,
+      ]}
     >
       <Orejera arete={animal.arete} />
       <View style={styles.datosAnimal}>
-        <Text
-          adjustsFontSizeToFit={true}
-          minimumFontScale={0.75}
-          numberOfLines={1}
-          style={styles.nombreAnimal}
-        >
+        <Text numberOfLines={1} style={styles.nombreAnimal}>
           {`Arete ${animal.arete}`}
         </Text>
         <Text numberOfLines={1} style={styles.fechaAnimal}>
-          {animal.ultima_estimacion == null ? 'Sin estimaciones' : fechaLegible(animal.ultima_estimacion)}
+          {animal.ultima_estimacion == null ? 'Sin pesadas' : fechaLegible(animal.ultima_estimacion)}
         </Text>
       </View>
       {animal.ultimo_peso_kg == null ? (
         <Text style={styles.sinPeso}>—</Text>
       ) : (
-        <View style={styles.pesoResumen}>
-          <Text style={styles.numeroResumen}>{Math.round(animal.ultimo_peso_kg)}</Text>
-          <Text style={styles.unidadResumen}>kg</Text>
+        <View style={styles.pesoBloque}>
+          <View style={styles.pesoFila}>
+            <Text style={styles.numeroResumen}>{Math.round(animal.ultimo_peso_kg)}</Text>
+            <Text style={styles.unidadResumen}>kg</Text>
+          </View>
+          <DeltaAnimal animal={animal} />
         </View>
       )}
     </Pressable>
   );
 }
 
+// The reason a rancher opens the history at all: how much did this animal move (handoff H3).
+function DeltaAnimal({ animal }: { animal: AnimalConResumen }) {
+  if (animal.ultimo_peso_kg == null || animal.penultimo_peso_kg == null) {
+    return <Text style={[styles.delta, styles.deltaNeutro]}>Primera pesada</Text>;
+  }
+
+  const diferencia = Math.round(animal.ultimo_peso_kg) - Math.round(animal.penultimo_peso_kg);
+
+  if (diferencia === 0) {
+    return <Text style={[styles.delta, styles.deltaNeutro]}>= igual</Text>;
+  }
+
+  const referencia =
+    animal.penultima_estimacion == null ? null : fechaCorta(animal.penultima_estimacion);
+  const cuerpo = `${signoPeso(diferencia)} kg${referencia == null ? '' : ` vs. ${referencia}`}`;
+
+  return (
+    <Text style={[styles.delta, diferencia > 0 ? styles.deltaSube : styles.deltaBaja]}>
+      {cuerpo}
+    </Text>
+  );
+}
+
+function signoPeso(diferencia: number): string {
+  return diferencia > 0 ? `+${diferencia}` : `\u2212${Math.abs(diferencia)}`;
+}
+
 function Orejera({ arete }: { arete: string }) {
   return (
     <View style={styles.orejera}>
       <View style={styles.agujeroOrejera} />
-      <Text
-        adjustsFontSizeToFit={true}
-        minimumFontScale={0.5}
-        numberOfLines={1}
-        style={styles.textoOrejera}
-      >
+      <Text numberOfLines={1} style={styles.textoOrejera}>
         {arete}
       </Text>
     </View>
@@ -352,10 +403,7 @@ function fechaLegible(timestamp: string): string {
     return timestamp;
   }
 
-  const ahora = new Date();
-  const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate()).getTime();
-  const inicioFecha = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()).getTime();
-  const diferenciaDias = Math.round((inicioHoy - inicioFecha) / 86_400_000);
+  const diferenciaDias = diferenciaEnDias(fecha);
   const hora = fecha.toLocaleTimeString('es-GT', { hour: 'numeric', minute: '2-digit' });
 
   if (diferenciaDias === 0) {
@@ -366,6 +414,34 @@ function fechaLegible(timestamp: string): string {
   }
 
   return fecha.toLocaleDateString('es-GT', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+// Short form for the delta line: "ayer", "20 ago" (handoff H3).
+function fechaCorta(timestamp: string): string {
+  const fecha = new Date(timestamp);
+  if (Number.isNaN(fecha.getTime())) {
+    return timestamp;
+  }
+
+  const diferenciaDias = diferenciaEnDias(fecha);
+
+  if (diferenciaDias === 0) {
+    return 'hoy';
+  }
+  if (diferenciaDias === 1) {
+    return 'ayer';
+  }
+
+  return fecha
+    .toLocaleDateString('es-GT', { day: 'numeric', month: 'short' })
+    .replace(/\.$/, '');
+}
+
+function diferenciaEnDias(fecha: Date): number {
+  const ahora = new Date();
+  const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate()).getTime();
+  const inicioFecha = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()).getTime();
+  return Math.round((inicioHoy - inicioFecha) / 86_400_000);
 }
 
 const styles = StyleSheet.create({
@@ -436,11 +512,15 @@ const styles = StyleSheet.create({
     borderRadius: radius.tarjeta,
     backgroundColor: colors.tarjeta,
   },
+  tarjetaDestacada: {
+    borderWidth: 2,
+    borderColor: colors.maiz,
+  },
   tarjetaPresionada: {
     opacity: 0.84,
   },
   orejera: {
-    width: 62,
+    width: 76,
     height: 70,
     alignItems: 'center',
     justifyContent: 'flex-end',
@@ -464,7 +544,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 3,
     color: colors.bosque,
     fontFamily: font.black,
-    fontSize: 23,
+    fontSize: 18,
+    letterSpacing: -0.3,
     textAlign: 'center',
   },
   datosAnimal: {
@@ -474,8 +555,8 @@ const styles = StyleSheet.create({
   nombreAnimal: {
     color: colors.verdeNombre,
     fontFamily: font.bold,
-    fontSize: 22,
-    lineHeight: 27,
+    fontSize: 20,
+    lineHeight: 25,
   },
   fechaAnimal: {
     marginTop: 2,
@@ -488,6 +569,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 4,
+  },
+  pesoBloque: {
+    alignItems: 'flex-end',
+  },
+  pesoFila: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+  },
+  delta: {
+    fontFamily: font.bold,
+    fontSize: 14,
+    lineHeight: 18,
+  },
+  deltaSube: {
+    color: colors.exito,
+  },
+  deltaBaja: {
+    color: colors.error,
+  },
+  deltaNeutro: {
+    color: colors.grisCalido,
   },
   numeroResumen: {
     color: colors.verdeTinta,
@@ -569,6 +672,38 @@ const styles = StyleSheet.create({
     fontFamily: font.medium,
     fontSize: 16,
     lineHeight: 22,
+  },
+  banda: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 48,
+    marginTop: 12,
+    marginHorizontal: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: colors.exito,
+  },
+  bandaIcono: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    backgroundColor: colors.crema,
+  },
+  bandaCheck: {
+    color: colors.exito,
+    fontFamily: font.black,
+    fontSize: 15,
+  },
+  bandaTexto: {
+    flex: 1,
+    color: colors.crema,
+    fontFamily: font.bold,
+    fontSize: 16,
+    lineHeight: 21,
   },
   busquedaContenedor: {
     flexDirection: 'row',
