@@ -2,6 +2,7 @@ import {
   Animated,
   Easing,
   Image,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -18,10 +19,11 @@ import { BotonPrimario } from '../ui/Botones';
 import { MarcaAruco } from '../ui/MarcaAruco';
 import { colors, font, radius } from '../ui/theme';
 
+// A finished step reads in the past tense, so progress is legible without the icon (handoff P2).
 const MENSAJES_ETAPA: Record<EtapaProcesamiento, string> = {
-  buscando_animal: 'Buscando al animal…',
-  leyendo_marcador: 'Leyendo el marcador…',
-  calculando_peso: 'Calculando peso…',
+  buscando_animal: 'Animal encontrado',
+  leyendo_marcador: 'Leyendo el cuadro…',
+  calculando_peso: 'Calculando el peso',
 };
 
 const ETAPAS = Object.keys(MENSAJES_ETAPA) as EtapaProcesamiento[];
@@ -105,7 +107,7 @@ export function ProcesandoScreen({ navigation, route }: ProcesandoScreenProps) {
   const indiceActivo = Math.max(0, ETAPAS.indexOf(etapa));
   const opacidadPulso = pulso.interpolate({
     inputRange: [0.86, 1],
-    outputRange: [0.45, 1],
+    outputRange: [0.75, 1],
   });
 
   return (
@@ -180,6 +182,18 @@ export function ProcesandoScreen({ navigation, route }: ProcesandoScreenProps) {
               })}
             </View>
             <Text style={styles.nota}>Esto tarda unos segundos. No cierre la aplicación.</Text>
+            <Pressable
+              accessibilityLabel="Cancelar y volver a la captura"
+              accessibilityRole="button"
+              android_ripple={{ color: colors.rippleSalvia }}
+              onPress={() => navigation.popToTop()}
+              style={({ pressed }) => [
+                styles.botonCancelar,
+                pressed ? styles.botonCancelarPresionado : undefined,
+              ]}
+            >
+              <Text style={styles.textoCancelar}>Cancelar</Text>
+            </Pressable>
           </View>
         </>
       )}
@@ -250,7 +264,7 @@ const styles = StyleSheet.create({
   pasoActual: {
     color: colors.maiz,
     fontFamily: font.bold,
-    fontSize: 11,
+    fontSize: 13,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
@@ -258,35 +272,35 @@ const styles = StyleSheet.create({
     marginTop: 1,
     color: colors.crema,
     fontFamily: font.bold,
-    fontSize: 16,
+    fontSize: 17,
   },
   etapas: {
-    gap: 0,
-    marginTop: 8,
-    paddingTop: 6,
+    gap: 2,
+    marginTop: 10,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: colors.bordeClaro,
   },
   filaEtapa: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 30,
-    gap: 8,
+    minHeight: 34,
+    gap: 10,
   },
   etapaHecha: {
     opacity: 0.78,
   },
   etapaPendiente: {
-    opacity: 0.46,
+    opacity: 0.75,
   },
   indicadorEtapa: {
-    width: 22,
-    height: 22,
+    width: 26,
+    height: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.crema,
-    borderRadius: 11,
+    borderRadius: 13,
   },
   indicadorHecho: {
     borderColor: colors.maiz,
@@ -295,30 +309,47 @@ const styles = StyleSheet.create({
   check: {
     color: colors.bosque,
     fontFamily: font.black,
-    fontSize: 13,
+    fontSize: 14,
   },
   indiceEtapa: {
     color: colors.crema,
     fontFamily: font.bold,
-    fontSize: 10,
+    fontSize: 13,
   },
   textoEtapa: {
     flex: 1,
-    color: colors.textoClaroTer,
+    color: colors.textoClaroSec,
     fontFamily: font.medium,
-    fontSize: 15,
-    lineHeight: 19,
+    fontSize: 17,
+    lineHeight: 21,
   },
   textoEtapaActiva: {
     color: colors.crema,
     fontFamily: font.bold,
   },
   nota: {
-    marginTop: 6,
-    color: colors.salviaClara,
+    marginTop: 10,
+    color: colors.textoClaroSec,
     fontFamily: font.regular,
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  botonCancelar: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    borderWidth: 2,
+    borderColor: colors.salvia,
+    borderRadius: radius.input,
+  },
+  botonCancelarPresionado: {
+    opacity: 0.8,
+  },
+  textoCancelar: {
+    color: colors.salviaClara,
+    fontFamily: font.bold,
+    fontSize: 16,
   },
   errorEstado: {
     flex: 1,
