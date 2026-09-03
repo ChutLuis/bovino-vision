@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import { CapturaScreen } from '../screens/CapturaScreen';
 import { HistorialScreen } from '../screens/HistorialScreen';
+import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { ProcesandoScreen } from '../screens/ProcesandoScreen';
 import { ResultadoScreen } from '../screens/ResultadoScreen';
 import { SplashScreen } from '../screens/SplashScreen';
@@ -15,6 +16,7 @@ export function AppNavigator() {
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Splash" component={SplashScreen} />
+        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Captura" component={CapturaScreen} />
         <Stack.Screen name="Procesando" component={ProcesandoScreen} />
         <Stack.Screen name="Resultado" component={ResultadoScreen} />

@@ -6,6 +6,7 @@ import {
   View,
 } from 'react-native';
 import { useEffect, useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Rubik_400Regular } from '@expo-google-fonts/rubik/400Regular';
 import { Rubik_500Medium } from '@expo-google-fonts/rubik/500Medium';
 import { Rubik_700Bold } from '@expo-google-fonts/rubik/700Bold';
@@ -15,6 +16,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { SplashScreenProps } from '../navigation/types';
+import { CLAVE_ONBOARDING } from './OnboardingScreen';
 import { usarModelo } from '../providers/ModelProvider';
 import { BotonPrimario } from '../ui/Botones';
 import { MarcaAruco } from '../ui/MarcaAruco';
@@ -29,16 +31,40 @@ export function SplashScreen({ navigation }: SplashScreenProps) {
     Rubik_700Bold,
     Rubik_900Black,
   });
+  const navegado = useRef(false);
   const puntos = useRef([
-    new Animated.Value(0.25),
-    new Animated.Value(0.25),
-    new Animated.Value(0.25),
+    new Animated.Value(0.7),
+    new Animated.Value(0.7),
+    new Animated.Value(0.7),
   ]).current;
 
   useEffect(() => {
-    if (estado === 'listo' && (fuentesCargadas || errorFuentes != null)) {
-      navigation.replace('Captura');
+    if (estado !== 'listo' || (!fuentesCargadas && errorFuentes == null)) {
+      return;
     }
+
+    if (navegado.current) {
+      return;
+    }
+
+    navegado.current = true;
+    let vigente = true;
+
+    // First run goes through the guide; afterwards straight to the camera (handoff O1).
+    AsyncStorage.getItem(CLAVE_ONBOARDING)
+      .catch((cause: unknown) => {
+        console.error('No se pudo leer la bandera del onboarding.', cause);
+        return null;
+      })
+      .then((visto) => {
+        if (vigente) {
+          navigation.replace(visto === '1' ? 'Captura' : 'Onboarding');
+        }
+      });
+
+    return () => {
+      vigente = false;
+    };
   }, [estado, errorFuentes, fuentesCargadas, navigation]);
 
   useEffect(() => {
@@ -58,7 +84,7 @@ export function SplashScreen({ navigation }: SplashScreenProps) {
         Animated.parallel(
           puntos.map((punto) =>
             Animated.timing(punto, {
-              toValue: 0.25,
+              toValue: 0.7,
               duration: 200,
               easing: Easing.in(Easing.ease),
               useNativeDriver: true,

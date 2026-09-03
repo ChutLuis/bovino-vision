@@ -119,6 +119,19 @@ export function CapturaScreen({ navigation, route }: CapturaScreenProps) {
             visual="marcador"
           />
         </View>
+
+        <Pressable
+          accessibilityLabel="Ver la guía otra vez"
+          accessibilityRole="button"
+          android_ripple={{ color: colors.rippleSalvia }}
+          onPress={() => navigation.navigate('Onboarding')}
+          style={({ pressed }) => [
+            styles.enlaceGuia,
+            pressed ? styles.accionPresionada : undefined,
+          ]}
+        >
+          <Text style={styles.enlaceGuiaTexto}>Ver la guía otra vez</Text>
+        </Pressable>
       </View>
 
       <View style={[styles.pie, { paddingBottom: insets.bottom + 16 }]}>
@@ -310,6 +323,17 @@ const styles = StyleSheet.create({
     fontFamily: font.regular,
     fontSize: 13,
     lineHeight: 18,
+  },
+  enlaceGuia: {
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  enlaceGuiaTexto: {
+    color: colors.salviaClara,
+    fontFamily: font.bold,
+    fontSize: 15,
+    textDecorationLine: 'underline',
   },
   iconoVaca: {
     width: 36,
