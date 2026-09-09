@@ -8,7 +8,9 @@ Pipeline de estimación de peso bovino. Identidad y pesos **validados** con el a
 | `pesos_orden_pesaje.csv` | **Pesos de referencia (cinta bovinométrica).** 35 vacas Jersey adultas, EN ORDEN DE PESAJE, sin tags (la columna Label del CSV viejo estaba mal). `Weight (LB), Name`. |
 | `WhatsApp Image 2026-06-05*.jpeg` | **fotos_hoy** — 37 fotos en orden de toma. #1-#2 = hoja en papel (sin vaca); #3-#37 = 35 vacas, 1 por vaca, marcador ArUco en poste fijo. Orden de foto = orden de pesaje. |
 | `WhatsApp Image 2026-06-09 at 13.37.37.jpeg` | Inventario oficial LACAMAMI (NOMBRE ↔ ARETE TRAZABILIDAD ↔ # fotografiada). Fuente autoritativa de identidad. |
-| `raw/_grouped/<NNNN>/` | Ráfagas de la mañana, carpeta = últimos 4 del arete leído. Máscaras anotadas a mano en `mascaras/`. |
+| `raw/_grouped/<NNNN>/` | Ráfagas del 4/06 (fuera del repo, en `Thesis_final_raw/`), carpeta = últimos 4 del arete leído. `mascaras/` son en su mayoría salida de YOLO (`auto_mask.py`), no manuales: 97 % coincide con el preentrenado con IoU ≥ 0.95. |
+| `repesaje_1206/` | 35 fotos individuales del 12/06 (una vaca nombrada por foto) + `pesos_repesaje_12_06.csv` (segunda pesada). |
+| `../val_clean/` | **Conjunto de validación anotado a mano** (40 imágenes, 3 estratos, 24 animales, `manifest.csv`). Única referencia independiente del modelo para IoU. |
 
 ## Dataset PRINCIPAL del modelo de peso → `fotos_hoy`
 - `mapeo_fotos_hoy.csv` — mapeo autoritativo orden→foto→nombre→arete→peso (lo genera `build_fotos_hoy_mapping.py`).
@@ -19,17 +21,20 @@ Pipeline de estimación de peso bovino. Identidad y pesos **validados** con el a
 
 ## Ráfagas de la mañana → segmentación/IoU y trabajo futuro (NO mejoran el peso)
 - `features_grouped.csv` — morfometría desde las máscaras manuales (lo genera `src/measure_grouped_masks.py`). 497 fotos / 19 vacas pesadas.
-- Probado: ráfagas solas o combinadas DEGRADAN el modelo de peso (marcador a distancia variable → escala inconsistente). Ver `src/eval_compare_datasets.py`. Sirven para IoU (n=40) y futuro fine-tuning de YOLO26-seg.
+- Probado: ráfagas solas o combinadas DEGRADAN el modelo de peso (marcador a distancia variable → escala inconsistente). Ver `src/eval_compare_datasets.py`.
+- Para segmentación son datos de ENTRENAMIENTO (train del fine-tuning); el IoU se mide contra `../val_clean/` (40 imágenes manuales). Resultado: el fine-tuning empeora al preentrenado; ver `../../FINETUNING.md`.
+- Identidad: el inventario asigna el arete 236703 a IRIS y a KARINA; las carpetas `6703*` son `IRIS/KARINA` y para el split se tratan como un solo animal (`ALIASES` en `build_yolo_seg_dataset.py`). `6706` no tiene match y se excluye de train.
 - Carpetas de vacas NO pesadas (Manzanilla, Lucero, Gaby, Nahomi, Ambar, Taty, Mariposa, Estrellita, Senorita) y `6706` (arete sin match) no se usan para peso.
 
 ## Reproducir
 ```bash
-cd prototype
+cd pipeline
 python3 build_fotos_hoy_mapping.py        # (desde raíz repo) mapeo + mosaico validación
 python3 src/measure_fotos_hoy.py          # morfometría fotos_hoy -> features_fotos_hoy.csv
 python3 src/eval_weight_fotos_hoy.py      # LOO + IC bootstrap -> métricas + pred_vs_real
 python3 src/measure_grouped_masks.py      # morfometría ráfagas -> features_grouped.csv
 python3 src/eval_compare_datasets.py      # comparación fotos_hoy vs ráfagas vs combinado
+python3 src/eval_finetuned_iou.py --visual # IoU de segmentadores contra val_clean -> informes/iou_val_manual_<fecha>/
 ```
 
 Material superado movido a `junk/data_field_obsoleto/` en la raíz del repo (ver `junk/README.md`).

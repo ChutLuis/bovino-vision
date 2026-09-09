@@ -1,6 +1,6 @@
-# Prototipo — Estimación de peso bovino
+# Pipeline (PC) — Estimación de peso bovino
 
-Pipeline de captura para la tesis: detecta vacas Jersey adultas con YOLO26 + identifica al animal por marcador ArUco fijo en su collar, y dispara ráfagas de fotos sin operador presente.
+Pipeline de investigación de la tesis (corre en PC): captura, anotación, segmentación, morfometría, modelo de peso, evaluaciones y exportación del modelo que consume el APK. Aquí ocurre todo el entrenamiento y la validación; el teléfono solo ejecuta artefactos congelados.
 
 ## Hardware objetivo
 - NVIDIA Jetson Orin Nano (despliegue en finca)
@@ -12,8 +12,9 @@ Durante desarrollo en macOS se usa la cámara integrada (FaceTime HD); la API de
 ## Instalación
 
 ```bash
-cd prototype
+cd pipeline
 python3 -m pip install -r requirements.txt
+python3 -m pytest -q          # pruebas (tests/)
 ```
 
 ## Uso
@@ -37,21 +38,31 @@ python3 src/capture.py --config config.yaml
 ## Estructura
 
 ```
-prototype/
-├── config.yaml          # parámetros tunables
-├── JETSON_SETUP.md      # guía deploy en Jetson Orin Nano
+pipeline/
+├── config.yaml              # parámetros de captura
+├── FINETUNING.md            # segmentador: split por animal, evaluación manual, veredicto
+├── JETSON_SETUP.md          # guía de la Jetson (plataforma de validación del prototipo)
+├── pytest.ini
 ├── src/
-│   ├── generate_markers.py    # genera PDF imprimible
-│   ├── detect_live.py         # visor debug
-│   ├── capture.py             # pipeline autónoma
-│   └── core/                  # módulos reutilizables
-├── tests/
-│   └── test_pipeline_smoke.py # E2E test (sin cámara)
+│   ├── core/                # aruco, calibration, segmenter, morphometry, seg_eval, ...
+│   ├── capture.py, detect_live.py, generate_markers.py
+│   ├── annotate_val.py      # anotación manual del conjunto de validación (MobileSAM + pincel)
+│   ├── build_yolo_seg_dataset.py   # dataset YOLO-seg, split por animal sin fuga (--dry-run)
+│   ├── finetune_segmenter.py       # entrenamiento (no sobrescribe pesos)
+│   ├── eval_finetuned_iou.py       # IoU contra máscaras manuales, IC por animal, paneles
+│   ├── measure_*.py, eval_weight_*.py, train_weight_model.py   # morfometría y modelo de peso
+│   └── eval_aruco_parity.py        # paridad de escala móvil vs OpenCV
+├── tests/                   # pytest: parseo de etiquetas, split, manifiesto, contrato LiteRT
 ├── data/
-│   ├── markers/         # PDFs generados (gitignored)
-│   └── captures/        # imágenes capturadas (gitignored)
-└── models/              # pesos YOLO26 (gitignored)
+│   ├── field/               # datos de campo (ver data/field/README_DATASETS.md)
+│   ├── field/seg_dataset/   # generado, gitignored
+│   └── val_clean/           # 40 imágenes de validación anotadas a mano + manifest.csv
+├── models/                  # pesos (gitignored); models/README.md lista procedencia y sha256
+└── runs/                    # salidas de Ultralytics (gitignored)
 ```
+
+Los crudos de campo (ráfagas `_grouped/`) viven fuera del repo en `Thesis_final_raw/` con `MANIFEST.sha1`;
+los scripts los toman de `--raw`, `$BOVINO_RAW_GROUPED` o `~/Documents/Thesis_final_raw/raw/_grouped`.
 
 ## Estado actual
 
@@ -60,6 +71,8 @@ prototype/
 | YOLO26n carga, detecta vaca conf 0.78-0.95 | PyTorch CUDA en ARM (ruedas NVIDIA) |
 | ArUco roundtrip (gen → detect ID OK) | C270 USB index correcto |
 | Smoke test E2E pasa | `cv2.imshow` con GUI de JetPack |
+| Segmentador desplegado = YOLO26n-seg preentrenado (cls 19), LiteRT FP32 sha256 `14b35a7b…`, exportación reproducible (`tests/test_export_contract.py`) | — |
+| Fine-tuning evaluado contra 40 máscaras manuales: empeora (ver FINETUNING.md) | — |
 | Trigger/cooldown/storage | TensorRT FP16 export |
 
 Ver **JETSON_SETUP.md** para el plan de deploy y troubleshooting.
