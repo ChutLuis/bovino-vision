@@ -1,13 +1,12 @@
 # Protocolo de campo — Sesión de ampliación de datos (sep 2026)
-**Correcciones atendidas: #3 (estadística de muestreo), #5 (pruebas exhaustivas), #7 (mejorar dataset)**
-Estado: BORRADOR v0.1 — fecha de sesión pendiente de confirmar con la finca
+Borrador: la fecha de la jornada se confirma con la finca.
 
 ## Objetivo de la sesión
 1. **Censo del hato elegible** (todas las Jersey adultas disponibles, no muestreo por conveniencia).
 2. **Ampliar el rango de peso** incorporando novillas y primerizas (categoría registrada como covariable).
 3. **Repetibilidad**: 5 fotos por animal para calcular ICC.
 4. **Error del instrumento**: doble lectura de cinta bovinométrica por animal.
-5. **Set de validación limpio**: fotos destinadas a máscaras dibujadas a mano (corrige el caveat de FINETUNING.md).
+5. **Set de validación limpio**: fotos destinadas a máscaras dibujadas a mano (referencia independiente del modelo para el IoU, ver `pipeline/FINETUNING.md`).
 
 ## Checklist pre-campo (la semana antes)
 - [ ] Confirmar fecha con la finca y transporte (jalón desde el centro de San José Pinula).
@@ -23,7 +22,7 @@ Estado: BORRADOR v0.1 — fecha de sesión pendiente de confirmar con la finca
 - Sin filtros, sin modo retrato, sin mejoras de IA. Resolución idéntica toda la sesión.
 - La escala la da el marcador, no el lente — pero la distorsión del lente sí contamina.
 
-## Sub-experimento: teléfono de gama baja (~10 min, corrección 5)
+## Sub-experimento: teléfono de gama baja (~10 min)
 Repetir las 5 fotos de 2–3 animales con un teléfono económico (p. ej. de personal
 de la finca, como en la sesión de junio). Objetivo: comparar MAPE flagship vs.
 gama baja — evidencia de que el producto funciona en el teléfono real del usuario
@@ -42,7 +41,7 @@ gama baja — evidencia de que el producto funciona en el teléfono real del usu
 | Arete | Nombre | Categoría | Cinta lb (1) | Cinta lb (2) | Hora fotos | Observaciones |
 |---|---|---|---|---|---|---|
 
-## Pruebas adicionales de robustez (últimos 30 min — corrección 5)
+## Pruebas adicionales de robustez (últimos 30 min)
 Con UN animal dócil, capturar la matriz de estrés del sistema:
 - [ ] 3 fotos a contraluz / sombra dura.
 - [ ] 3 fotos con ángulo exagerado (~45° en vez de lateral).
