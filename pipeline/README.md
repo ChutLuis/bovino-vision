@@ -52,6 +52,12 @@ exportar el `.tflite`, emular la ruta del APK en PC y evaluar IoU y paridad.
   YOLO26n-seg preentrenado en COCO exportado a LiteRT FP32 (sha256 `14b35a7b…`); el fine-tuning se evaluó contra las
   máscaras manuales y se descartó (`FINETUNING.md`).
 
+## Notebook de evidencia
+
+`notebooks/modelo_peso.ipynb` (raíz del repositorio) reproduce con las funciones de `eval_weight_fotos_hoy.py` el
+modelo de peso y reúne IoU, paridad, tiempos del A25 y golden a partir de `informes/`. Se ejecuta con este entorno más
+`ipykernel` (`requirements.txt`).
+
 ## Jetson Orin Nano
 
 Fue la plataforma del prototipo de captura autónoma (mayo de 2026): `capture.py` detecta marcador y vaca con la
