@@ -1,6 +1,6 @@
 # Requerimientos del Proyecto — Sistema de Estimación de Peso Bovino
 **Corrección atendida: #1 (claridad de requerimientos) y #2 (producto final a entregar)**
-Estado: BORRADOR v0.1 — para debate con Luis Felipe
+Estado: BORRADOR v0.1
 
 ## 1. Definición del producto final
 

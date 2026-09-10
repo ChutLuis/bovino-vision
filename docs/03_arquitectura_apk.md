@@ -226,7 +226,7 @@ Dos hallazgos del ejercicio:
   recortar el relleno del letterbox rectangular; en fotos 16:9 la silueta quedaba aplastada un 6 % en
   vertical. Las fotos 4:3 del protocolo (1280×960) no tenían relleno y no se vieron afectadas: el MAPE
   7.71 % y la paridad de agosto siguen válidos. Corregido con `ops.scale_masks`; detalle en
-  `docs/correcciones/revision_finetune_2026-09-09.md` (H-15).
+  `pipeline/FINETUNING.md` y en `informes/mascaras_rafagas_regen_20260910/`.
 - **Letterbox distinto, mismo modelo.** Ultralytics en PC usa letterbox rectangular con relleno mínimo;
   el APK usa 640×640 fijo. Con fotos 4:3 la diferencia de área es −0.25 % media (≤ 0.62 %); a conf 0.5 el
   APK detecta dos fotos del 12/06 que el `.pt` pierde. El APK es el instrumento de referencia; el `.pt`

@@ -90,4 +90,4 @@ anotación manual en las laterales controladas).
   (copia `models/finetuned_20260610_d6c65749.pt`). mAP50(M) 0.92 sobre su val automático; 0.718 de IoU sobre el manual.
 - 27 ago 2026: tres corridas de 1 época en CPU (warmup) en `runs/segment/runs/`. Sin valor.
 - 2 y 9 sep 2026: anotación manual de las 40 imágenes de validación.
-- 9 sep 2026: evaluación, cierre y este documento. Detalle en `docs/correcciones/revision_finetune_2026-09-09.md`.
+- 9 sep 2026: evaluación, cierre y este documento.
