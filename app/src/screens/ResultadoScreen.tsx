@@ -15,6 +15,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets, type EdgeInsets } from 'react-native-safe-area-context';
+import { useWindowDimensions } from 'react-native';
 
 import {
   guardarAnimal,
@@ -246,12 +247,14 @@ function ResultadoExitoso({
   insetInferior,
 }: ResultadoExitosoProps) {
   const insets = useSafeAreaInsets();
+  const { height: altoPantalla } = useWindowDimensions();
   const [arete, setArete] = useState(aretePrellenado ?? '');
   const [animales, setAnimales] = useState<AnimalConResumen[]>([]);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [areteEnfocado, setAreteEnfocado] = useState(false);
   const [tecladoVisible, setTecladoVisible] = useState(false);
+  const [altoTeclado, setAltoTeclado] = useState(0);
   const [fotoAmpliada, setFotoAmpliada] = useState(false);
   const [tamanoFoto, setTamanoFoto] = useState<Tamano | null>(null);
   const [tamanoOriginal, setTamanoOriginal] = useState<Tamano | null>(null);
@@ -263,31 +266,31 @@ function ResultadoExitoso({
     requestAnimationFrame(() => {
       resultadoScrollRef.current?.scrollToEnd({ animated: true });
     });
-    setTimeout(() => {
-      resultadoScrollRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-    setTimeout(() => {
-      resultadoScrollRef.current?.scrollToEnd({ animated: true });
-    }, 280);
   };
 
   useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', () => {
+    const showSub = Keyboard.addListener('keyboardDidShow', (evento) => {
       setTecladoVisible(true);
-      scrollAlFinal();
+      setAltoTeclado(Math.max(0, altoPantalla - evento.endCoordinates.screenY));
     });
 
     const hideSub = Keyboard.addListener('keyboardDidHide', () => {
       setTecladoVisible(false);
       setAreteEnfocado(false);
-      areteRef.current?.blur();
+      setAltoTeclado(0);
     });
 
     return () => {
       showSub.remove();
       hideSub.remove();
     };
-  }, []);
+  }, [altoPantalla]);
+
+  useEffect(() => {
+    if (tecladoVisible && altoTeclado > 0) {
+      scrollAlFinal();
+    }
+  }, [tecladoVisible, altoTeclado]);
 
   useEffect(() => {
     let vigente = true;
@@ -463,10 +466,13 @@ function ResultadoExitoso({
       <ScrollView
         contentContainerStyle={[
           styles.resultadoContenido,
-          { paddingBottom: tecladoVisible ? 160 : Math.max(32, insetInferior + 24) },
+          {
+            paddingBottom: tecladoVisible
+              ? altoTeclado
+              : Math.max(32, insetInferior + 24),
+          },
         ]}
-        keyboardDismissMode="on-drag"
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="always"
         ref={resultadoScrollRef}
         showsVerticalScrollIndicator={false}
         style={styles.resultadoScroll}
@@ -519,14 +525,13 @@ function ResultadoExitoso({
             >
               <TextInput
                 accessibilityLabel="Número de arete del animal"
-                autoCapitalize="characters"
+                autoCapitalize="none"
                 inputMode="numeric"
                 keyboardType="numeric"
                 maxLength={6}
                 onChangeText={actualizarArete}
                 onBlur={() => actualizarFocoArete(false)}
                 onFocus={() => actualizarFocoArete(true)}
-                onPressIn={scrollAlFinal}
                 onSubmitEditing={() => {
                   if (puedeGuardar) {
                     void guardar();
@@ -541,34 +546,42 @@ function ResultadoExitoso({
               />
               <Text style={styles.reglaCampo}>1–6 dígitos</Text>
             </View>
-            {aretesSugeridos.length > 0 ? (
-              <View style={styles.sugerenciasBloque}>
-                <Text style={styles.sugerenciasEtiqueta}>Ya en el historial (toque para usar):</Text>
-                <ScrollView
-                  contentContainerStyle={styles.sugerenciasFila}
-                  horizontal={true}
-                  keyboardShouldPersistTaps="handled"
-                  showsHorizontalScrollIndicator={false}
-                >
-                  {aretesSugeridos.map((valor) => (
-                    <Pressable
-                      accessibilityLabel={`Usar el arete ${valor}`}
-                      accessibilityRole="button"
-                      android_ripple={{ color: colors.ripplePrimario }}
-                      hitSlop={{ bottom: 2, top: 2 }}
-                      key={valor}
-                      onPress={() => actualizarArete(valor)}
-                      style={({ pressed }) => [
-                        styles.chipArete,
-                        pressed ? styles.chipAretePresionado : undefined,
-                      ]}
-                    >
-                      <Text style={styles.textoChipArete}>{valor}</Text>
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              </View>
-            ) : null}
+            <View
+              importantForAccessibility={
+                aretesSugeridos.length > 0 ? 'auto' : 'no-hide-descendants'
+              }
+              pointerEvents={aretesSugeridos.length > 0 ? 'auto' : 'none'}
+              style={[
+                styles.sugerenciasBloque,
+                aretesSugeridos.length === 0 ? styles.sugerenciasBloqueVacia : undefined,
+              ]}
+            >
+              <Text style={styles.sugerenciasEtiqueta}>Ya en el historial (toque para usar):</Text>
+              <ScrollView
+                contentContainerStyle={styles.sugerenciasFila}
+                horizontal={true}
+                keyboardShouldPersistTaps="always"
+                showsHorizontalScrollIndicator={false}
+                style={styles.sugerenciasScroll}
+              >
+                {aretesSugeridos.map((valor) => (
+                  <Pressable
+                    accessibilityLabel={`Usar el arete ${valor}`}
+                    accessibilityRole="button"
+                    android_ripple={{ color: colors.ripplePrimario }}
+                    hitSlop={{ bottom: 2, top: 2 }}
+                    key={valor}
+                    onPress={() => actualizarArete(valor)}
+                    style={({ pressed }) => [
+                      styles.chipArete,
+                      pressed ? styles.chipAretePresionado : undefined,
+                    ]}
+                  >
+                    <Text style={styles.textoChipArete}>{valor}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
             {error != null ? <Text style={styles.errorGuardar}>{error}</Text> : null}
           </View>
 
@@ -1281,14 +1294,15 @@ const styles = StyleSheet.create({
   campoEnfocado: {
     borderColor: colors.maiz,
     borderWidth: 2,
-    shadowColor: colors.maiz,
-    shadowOpacity: 0.45,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 3,
   },
   sugerenciasBloque: {
     gap: 8,
+  },
+  sugerenciasBloqueVacia: {
+    opacity: 0,
+  },
+  sugerenciasScroll: {
+    height: 40,
   },
   sugerenciasEtiqueta: {
     color: colors.tierra,
