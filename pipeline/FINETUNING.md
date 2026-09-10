@@ -74,10 +74,8 @@ después la Fase E: paridad de área PC↔APK ≤ 1 % y reajuste de los coeficie
 peso, porque se ajustaron con áreas del preentrenado (que sobre-segmenta +4.3 % frente a la
 anotación manual en las laterales controladas).
 
-## Historial
+## Procedencia del modelo afinado
 
-- 10 jun 2026: fine-tuning de 80 épocas (ultralytics 8.4.53) sobre el dataset viejo → `models/yolo26n-seg-finetuned.pt`
-  (copia `models/finetuned_20260610_d6c65749.pt`). mAP50(M) 0.92 sobre su val automático; 0.718 de IoU sobre el manual.
-- 27 ago 2026: tres corridas de 1 época en CPU (warmup) en `runs/segment/runs/`. Sin valor.
-- 2 y 9 sep 2026: anotación manual de las 40 imágenes de validación.
-- 9 sep 2026: evaluación, cierre y este documento.
+`models/yolo26n-seg-finetuned.pt` (copia `models/finetuned_20260610_d6c65749.pt`): 80 épocas con ultralytics 8.4.53
+sobre el dataset de junio de 2026; mAP50(M) 0.92 sobre su validación automática y 0.718 de IoU sobre la manual. Las 40
+imágenes de validación se anotaron a mano en septiembre de 2026.
