@@ -207,6 +207,31 @@ la vaca antes de pagar el marcador — inverso al supuesto original de v0.1.
 Tiempo total medido en A25: **~2.0 s** ≤ 3 s (RNF-02 ✓); cold start 3.97 s →
 precargar el modelo al abrir la app.
 
+### Emulación de la ruta del APK en PC, validada contra el A25 (9 sep 2026)
+`pipeline/src/core/segmenter_litert.py` reproduce en Python, paso a paso, `image.ts` y `segment.ts`
+(letterbox bilineal 640×640 con relleno 114/255, LiteRT, Σ coef·prototipo > 0 recortado a la caja en
+la rejilla 160×160, vecino más cercano al tamaño original). Sobre las 10 fotos del benchmark del 26 ago
+coincide con lo que registró el Galaxy A25: mismas detecciones en 10/10, área media −0.014 % (|máx|
+0.205 %), confianza ±0.006, caja ±1.2 px; la única diferencia es el decodificador JPEG (jpeg-js vs
+libjpeg). **Consecuencia:** lo que se mida en PC con el `.tflite` vale para el teléfono, y queda una
+prueba automática (`pipeline/tests/test_parity_a25.py`) que falla si la app y el pipeline divergen.
+
+Con eso se evaluó el segmentador desplegado contra las 40 máscaras manuales de `pipeline/data/val_clean`
+(24 animales, conf 0.5): IoU de la vaca objetivo **0.868** (laterales controladas 0.924), vaca correcta en
+38/40, ninguna foto sin detección (`informes/iou_val_manual_apk_20260909/`). Es la primera medición del
+instrumento desplegado contra referencia independiente del modelo.
+
+Dos hallazgos del ejercicio:
+- **Bug en el pipeline de PC, no en el APK.** `CowSegmenter` redimensionaba la máscara de Ultralytics sin
+  recortar el relleno del letterbox rectangular; en fotos 16:9 la silueta quedaba aplastada un 6 % en
+  vertical. Las fotos 4:3 del protocolo (1280×960) no tenían relleno y no se vieron afectadas: el MAPE
+  7.71 % y la paridad de agosto siguen válidos. Corregido con `ops.scale_masks`; detalle en
+  `docs/correcciones/revision_finetune_2026-09-09.md` (H-15).
+- **Letterbox distinto, mismo modelo.** Ultralytics en PC usa letterbox rectangular con relleno mínimo;
+  el APK usa 640×640 fijo. Con fotos 4:3 la diferencia de área es −0.25 % media (≤ 0.62 %); a conf 0.5 el
+  APK detecta dos fotos del 12/06 que el `.pt` pierde. El APK es el instrumento de referencia; el `.pt`
+  es su aproximación en PC.
+
 ## Fuera del APK (se queda en `pipeline/`, PC)
 Anotación de máscaras, fine-tuning, ajuste alométrico, evaluaciones estadísticas,
 generación de marcadores. El APK consume artefactos congelados: `model.tflite` +

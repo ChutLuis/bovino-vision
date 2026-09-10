@@ -23,6 +23,7 @@ Pipeline de estimación de peso bovino. Identidad y pesos **validados** con el a
 - `features_grouped.csv` — morfometría desde las máscaras manuales (lo genera `src/measure_grouped_masks.py`). 497 fotos / 19 vacas pesadas.
 - Probado: ráfagas solas o combinadas DEGRADAN el modelo de peso (marcador a distancia variable → escala inconsistente). Ver `src/eval_compare_datasets.py`.
 - Para segmentación son datos de ENTRENAMIENTO (train del fine-tuning); el IoU se mide contra `../val_clean/` (40 imágenes manuales). Resultado: el fine-tuning empeora al preentrenado; ver `../../FINETUNING.md`.
+- **Aviso (9 sep 2026):** `features_grouped.csv` y los PNG de `_grouped/*/mascaras/` se generaron con `CowSegmenter` antes de corregir el recorte del relleno del letterbox; en las ráfagas 16:9 (4096×2304) las máscaras están aplastadas un 6 % en vertical (alturas y áreas subestimadas). `fotos_hoy` (1280×960) no está afectado. Pendiente regenerar ambos con el segmentador corregido y revisar la comparación fotos_hoy vs ráfagas.
 - Identidad: el inventario asigna el arete 236703 a IRIS y a KARINA; las carpetas `6703*` son `IRIS/KARINA` y para el split se tratan como un solo animal (`ALIASES` en `build_yolo_seg_dataset.py`). `6706` no tiene match y se excluye de train.
 - Carpetas de vacas NO pesadas (Manzanilla, Lucero, Gaby, Nahomi, Ambar, Taty, Mariposa, Estrellita, Senorita) y `6706` (arete sin match) no se usan para peso.
 

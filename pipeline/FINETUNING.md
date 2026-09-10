@@ -16,16 +16,28 @@ referencia, conf 0.45, imgsz 640, selección "mayor área" como en el pipeline d
 
 | modelo | eligió la vaca objetivo | sin detección | IoU vaca objetivo | error de área medio | recall de instancias |
 |---|---|---|---|---|---|
-| preentrenado COCO | 92.5 % | 1 / 40 | **0.847** (fácil 0.929 · media 0.769 · difícil 0.841) | +1.9 % | 0.85 |
-| afinado 10 jun 2026 | 82.5 % | 6 / 40 | 0.718 (0.830 · 0.738 · 0.520) | −15.3 % | 0.57 |
+| preentrenado COCO | 92.5 % | 1 / 40 | **0.851** (fácil 0.929 · media 0.780 · difícil 0.841) | +4.1 % | 0.85 |
+| afinado 10 jun 2026 | 82.5 % | 6 / 40 | 0.725 (0.830 · 0.756 · 0.520) | −13.2 % | 0.57 |
 
 Bootstrap por animal (n = 24, 5000 remuestreos) de la diferencia afinado − preentrenado en IoU de la
 vaca objetivo: **−0.13, IC95 [−0.23, −0.03]**. El afinado no detecta nada en 6 fotos, entre ellas dos
 laterales limpias del protocolo del producto (`5_06_ford`, `12_06_selena`).
 
-Por qué pasa: de las 377 máscaras de ráfaga que alimentan train, el 97 % coincide con la salida del
-propio preentrenado con IoU ≥ 0.95 (mediana 0.987): fueron generadas por `auto_mask.py`, no a mano.
-El fine-tuning es auto-destilación sobre 12–14 animales y solo puede empatar o desviarse.
+Por qué pasa, dos defectos en las etiquetas de entrenamiento:
+1. De las 377 máscaras de ráfaga que alimentan train, el 97 % coincide con la salida del propio
+   preentrenado con IoU ≥ 0.95 (mediana 0.987): fueron generadas por `auto_mask.py`, no a mano.
+   El fine-tuning es auto-destilación sobre 12–14 animales y solo puede empatar o desviarse.
+2. Esas máscaras se guardaron con un error geométrico: `core/segmenter.py` redimensionaba `masks.data`
+   (que está a la resolución de entrada de la red, con relleno) sin recortar el relleno, y en las ráfagas
+   16:9 (4096×2304) la silueta quedaba aplastada un 6 % en vertical. Corregido el 9 sep 2026
+   (`ops.scale_masks`, prueba `tests/test_segmenter_padding.py`). Las fotos 4:3 del producto y de
+   `fotos_hoy` no se vieron afectadas. Los PNG de `_grouped/*/mascaras/` siguen aplastados hasta que se
+   regeneren.
+
+La ruta del APK (LiteRT, letterbox 640×640 fijo, `core/segmenter_litert.py`) evaluada sobre las mismas
+40 imágenes con el umbral del producto (conf 0.5): IoU 0.868, eligió la vaca objetivo en 38 de 40,
+ninguna sin detección; detecta las dos fotos del 12/06 (`karina`, `oscarina`) que el `.pt` con
+letterbox rectangular pierde a ese umbral (`informes/iou_val_manual_apk_20260909/`).
 
 ## Conjunto de validación manual (`data/val_clean/`)
 
