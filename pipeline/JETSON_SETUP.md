@@ -1,295 +1,195 @@
-# Deploy en NVIDIA Jetson Orin Nano
+# Entorno en NVIDIA Jetson Orin Nano
 
-Guía paso a paso **probada en JetPack 6.2.1** (validado 2026-05-22: smoke test E2E pasa, YOLO26 + ArUco + ráfaga funcionan en GPU del Orin). El **código Python** es portable entre macOS y Jetson; lo que cambia es el **entorno** (PyTorch ARM, cuSPARSELt, drivers V4L2). Esta guía cubre exactamente eso.
+La Jetson Orin Nano fue la plataforma del prototipo de captura autónoma (`capture.py`, `detect_live.py`), probada
+con JetPack 6.2.1 el 22 de mayo de 2026: smoke test E2E, YOLO26 y ArUco en la GPU del Orin. El código Python es el
+mismo que en PC; lo que cambia es el entorno: el stack de JetPack 6.2 exige torch 2.5 (no 2.3), cuSPARSELt instalada
+aparte, numpy fijado en 1.x, opencv-contrib-python ≤ 4.12 y torchvision compilado desde fuente. Cada punto se explica
+abajo con su razón.
 
-> **Resumen ejecutivo:** El stack JP6.2 requiere torch 2.5 (no 2.3), cuSPARSELt instalada aparte, numpy fijado en 1.x, opencv-contrib-python ≤4.12, y torchvision construido desde source. Cada uno se explica abajo con su razón.
+## 0. Prerrequisitos
 
----
+- Jetson Orin Nano con JetPack 6.2.x (CUDA 12.6, cuDNN 9.3, TensorRT 10.3 preinstalados).
+- Cámara USB (Logitech C270 o equivalente).
+- Internet solo durante la instalación; la captura en finca es offline.
 
-## 0. Pre-requisitos
-
-- Jetson Orin Nano flasheado con **JetPack 6.2.x** (trae CUDA 12.6, cuDNN 9.3, TensorRT 10.3 preinstalados).
-- Cámara Logitech C270 USB (o equivalente).
-- Acceso al Jetson (monitor + teclado, o SSH).
-- Internet (solo durante setup — la captura en finca es offline).
-
-Verificar la versión exacta:
 ```bash
 sudo apt-cache show nvidia-jetpack | grep -E "Version|Package" | head -4
-cat /etc/nv_tegra_release | head -2
-```
-Esperado: `Version: 6.2.x+...` y `R36 (release), REVISION: 4.x` (L4T 36.4.x).
-
----
-
-## 1. Transferir el repo
-
-```bash
-git clone git@github.com:ChutLuis/thesis-weigh-estimation.git ~/Documents/thesis-weigh-estimation
-cd ~/Documents/thesis-weigh-estimation/prototype
+cat /etc/nv_tegra_release | head -2      # esperado: R36 (release), REVISION: 4.x (L4T 36.4.x)
 ```
 
----
-
-## 2. Verificar la cámara C270
+## 1. Repositorio y cámara
 
 ```bash
+git clone https://github.com/ChutLuis/bovino-vision.git ~/bovino-vision
+cd ~/bovino-vision/pipeline
 ls /dev/video*
 v4l2-ctl --list-devices
 v4l2-ctl --device=/dev/video0 --list-formats-ext | head -20
 ```
-Si la C270 no es `video0`, edita `config.yaml` → `camera.index: 1` (o el índice que aparezca).
 
----
+Si la C270 no es `video0`, cambia `camera.index` en `config.yaml`.
 
-## 3. Python venv
+## 2. Entorno Python
 
-JetPack 6.2 trae Python 3.10 preinstalado.
+JetPack 6.2 trae Python 3.10.
 
 ```bash
-python3 -m venv ~/venv-thesis
-source ~/venv-thesis/bin/activate
+python3 -m venv ~/venv-bovino
+source ~/venv-bovino/bin/activate
 pip install --upgrade pip
 ```
 
----
+## 3. PyTorch 2.5 de NVIDIA (compatible con cuDNN 9)
 
-## 4. PyTorch 2.5 (cuDNN 9 compatible) — desde NVIDIA, no PyPI
-
-**No uses `pip install torch` genérico** (te da CPU-only para ARM) ni el wheel `torch 2.3` antiguo de NVIDIA Forums (compilado contra cuDNN 8, que JP6.2 ya no incluye).
+No sirve `pip install torch` genérico (CPU-only en ARM) ni el wheel `torch 2.3` de los foros de NVIDIA (compilado
+contra cuDNN 8, que JetPack 6.2 ya no incluye: falla con `ImportError: libcudnn.so.8`).
 
 ```bash
 pip install --no-cache https://developer.download.nvidia.com/compute/redist/jp/v61/pytorch/torch-2.5.0a0+872d972e41.nv24.08.17622132-cp310-cp310-linux_aarch64.whl
-```
-
-> **Por qué este wheel exacto:** `torch 2.5.0a0+...nv24.08` es la build de NVIDIA compilada contra cuDNN 9 (la que trae JP6.2). El wheel `torch 2.3` que el thread de Forums sugiere por default es de la era cuDNN 8 — en JP6.2 falla con `ImportError: libcudnn.so.8: cannot open shared object file`.
-
-**Verificación parcial (debe fallar todavía por cuSPARSELt — eso es esperado):**
-```bash
 python3 -c "import torch; print(torch.__version__, torch.cuda.is_available())"
 ```
-Si sale `ImportError: libcusparseLt.so.0: cannot open shared object file` → sigue al paso 5. Eso es lo que toca.
 
----
+En este punto `import torch` falla con `ImportError: libcusparseLt.so.0`; es lo esperado y se resuelve en el paso 4.
 
-## 5. cuSPARSELt 0.7.1 — instalar aparte (JetPack no la trae)
+## 4. cuSPARSELt 0.7.1
 
-El wheel torch 2.5 depende de cuSPARSELt (`libcusparseLt.so.0`), una librería NVIDIA para álgebra lineal con tensores dispersos. **JetPack 6.2 NO la instala por defecto** — hay que instalarla manual desde el repo local de NVIDIA.
+El wheel de torch 2.5 depende de cuSPARSELt y JetPack 6.2 no la instala.
 
 ```bash
 cd ~
 wget https://developer.download.nvidia.com/compute/cusparselt/0.7.1/local_installers/cusparselt-local-tegra-repo-ubuntu2204-0.7.1_1.0-1_arm64.deb
-
 sudo dpkg -i cusparselt-local-tegra-repo-ubuntu2204-0.7.1_1.0-1_arm64.deb
 sudo cp /var/cusparselt-local-tegra-repo-ubuntu2204-0.7.1/cusparselt-*-keyring.gpg /usr/share/keyrings/
 sudo apt-get update
 sudo apt-get install -y libcusparselt0 libcusparselt-dev
+python3 -c "import torch; print('torch:', torch.__version__); print('CUDA:', torch.cuda.is_available()); print('Device:', torch.cuda.get_device_name(0))"
 ```
 
-**Verificación de torch + GPU:**
-```bash
-python3 -c "import torch; print('torch:', torch.__version__); print('CUDA:', torch.cuda.is_available()); print('Device:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A')"
-```
-Esperado:
-```
-torch: 2.5.0a0+872d972e41.nv24.08
-CUDA: True
-Device: Orin
-```
+Esperado: `torch: 2.5.0a0+872d972e41.nv24.08`, `CUDA: True`, `Device: Orin`.
 
----
+## 5. numpy 1.x
 
-## 6. numpy 1.x — antes que torch lo necesite
-
-El wheel torch de NVIDIA fue compilado mediados-2024, contra numpy 1.x ABI. **Si numpy 2.x está instalado, todo `import torch` lanza warning de ABI y fallan operaciones de tensor.**
+El wheel de NVIDIA se compiló contra la ABI de numpy 1.x. Con numpy 2.x cada `import torch` avisa de ABI y fallan
+operaciones de tensor.
 
 ```bash
 pip install 'numpy<2'
-```
-
-Re-verifica torch SIN warning de NumPy:
-```bash
 python3 -c "import torch, numpy; print('numpy:', numpy.__version__); print('torch:', torch.__version__, 'CUDA:', torch.cuda.is_available())"
 ```
-Esperado: salida limpia, **sin** el bloque rojo `A module that was compiled using NumPy 1.x cannot be run in NumPy 2.2.6...`.
 
----
+## 6. torchvision 0.20 desde fuente
 
-## 7. torchvision 0.20 — build desde source
-
-NVIDIA no hostea wheel binario de torchvision para JP6.2 que matchee con torch 2.5. PyPI sí ofrece `torchvision 0.27` para aarch64 — **pero es CPU-only y no enlaza con la torch 2.5 CUDA de NVIDIA**. Toca buildear desde source. Demora ~25 min en Orin Nano pero se hace una sola vez.
+NVIDIA no publica un wheel de torchvision para JetPack 6.2 que case con torch 2.5, y el de PyPI para aarch64 es
+CPU-only. Compilar tarda unos 25 minutos en el Orin Nano y se hace una vez.
 
 ```bash
 sudo apt-get install -y libjpeg-dev zlib1g-dev libpython3-dev libopenblas-dev libavcodec-dev libavformat-dev libswscale-dev
-
 cd ~
 git clone --branch release/0.20 https://github.com/pytorch/vision torchvision-build
 cd torchvision-build
 export BUILD_VERSION=0.20.0
 pip install . --no-build-isolation
-```
-
-> **NO uses `python3 setup.py install --user`** (lo que dice el blog NinjaLABO). Eso instala fuera del venv en `~/.local/`, y el venv-thesis no lee `.local`. Usa `pip install .` que sí respeta el venv activo.
-
-**Verificación:**
-```bash
 cd ~
 python3 -c "
-import torch, torchvision
-print('torch:', torch.__version__, 'CUDA:', torch.cuda.is_available())
+import torch, torchvision, torchvision.ops
 print('torchvision:', torchvision.__version__, 'from:', torchvision.__file__)
-import torchvision.ops
 print('nms registered:', 'nms' in dir(torchvision.ops))
 "
 ```
-**Lo crítico es `nms registered: True`** — eso confirma que el C++ de torchvision se enlazó con torch.
 
-Si te sale `RuntimeError: operator torchvision::nms does not exist` o `ModuleNotFoundError`, ver troubleshooting (§ 11).
+Usa `pip install .`, no `python3 setup.py install --user`: este último instala en `~/.local`, fuera del venv. Lo que
+confirma el enlace con torch es `nms registered: True`, y hay que importar desde fuera de `~/torchvision-build/`.
 
----
-
-## 8. Resto de dependencias del prototipo
+## 7. Resto de dependencias
 
 ```bash
-cd ~/Documents/thesis-weigh-estimation/prototype
+cd ~/bovino-vision/pipeline
 pip install -r requirements.txt
+pip install 'numpy<2' 'opencv-contrib-python<4.13'    # por si alguna dependencia subió numpy
 ```
 
-> **Si `pip install` upgradea numpy a 2.x otra vez** (porque opencv-contrib-python 4.13 lo arrastra), tu requirements.txt tiene los pines correctos (`numpy<2`, `opencv-contrib-python<4.13`) — pero re-confirma:
-> ```bash
-> pip install 'numpy<2' 'opencv-contrib-python<4.13'
-> ```
-
-**El conflicto de OpenCV** (importante): ultralytics declara `opencv-python>=4.6` como dep, y nosotros pedimos `opencv-contrib-python`. Pip instala ambos, escriben al mismo `cv2/` directory y se sobrescriben. La opencv-python no-contrib **no tiene aruco**. Si vez `AttributeError: module 'cv2' has no attribute 'aruco'`:
+`ultralytics` declara `opencv-python` y el pipeline necesita `opencv-contrib-python` (la versión sin contrib no trae
+`aruco`). Si los dos quedan instalados se pisan el directorio `cv2/`; ante `AttributeError: module 'cv2' has no
+attribute 'aruco'`:
 
 ```bash
 pip uninstall -y opencv-python opencv-contrib-python
 pip install 'opencv-contrib-python<4.13'
 ```
 
-(El warning de pip "ultralytics requires opencv-python>=4.6.0, which is not installed" es solo metadatos — ultralytics importa `cv2`, que opencv-contrib-python sí provee.)
+El aviso de pip "ultralytics requires opencv-python" es solo metadatos: ultralytics importa `cv2`, que
+opencv-contrib-python provee.
 
----
-
-## 9. Ajustes de `config.yaml` para Jetson
+## 8. `config.yaml` en la Jetson
 
 ```yaml
 camera:
-  index: 0          # o 1 según v4l2-ctl --list-devices
+  index: 0          # o el que dé v4l2-ctl --list-devices
   width: 1280
   height: 720
   fps: 30
 
 cow_detector:
   model: models/yolo26n.pt
-  device: "cuda:0"  # explícito, importante en Jetson
+  device: "cuda:0"  # explícito; en PC se deja "" (auto)
   min_confidence: 0.50
 ```
 
----
+## 9. Pruebas
 
-## 10. Pruebas progresivas
-
-### 10.1 Smoke test (sin cámara, sin GUI) — verificación final
 ```bash
-cd ~/Documents/thesis-weigh-estimation/prototype
-curl -sS -L -A "Mozilla/5.0" -o /tmp/test_cow.jpg "https://images.unsplash.com/photo-1500595046743-cd271d694d30?w=800"
-python3 tests/test_pipeline_smoke.py
-```
-Esperado:
-```
-frame: (531, 800, 3)  markers=1  cows=4
-  marker id=3  side=179px
-  cow conf=0.95  ...
-OK — pipeline smoke test passed
+cd ~/bovino-vision/pipeline
+cp /ruta/a/una/foto_con_vaca.jpg /tmp/test_cow.jpg
+python3 tests/test_pipeline_smoke.py        # esperado: markers=1, cows>=1, "OK — pipeline smoke test passed"
+python3 src/detect_live.py                  # visor en vivo; requiere monitor o X forwarding
+python3 src/capture.py --max-bursts 3       # captura headless; escribe data/captures/aruco_*/
 ```
 
-### 10.2 Visor en vivo (requiere monitor o X-forwarding)
-```bash
-python3 src/detect_live.py
-```
-Si `cv2.imshow` falla → ver troubleshooting § 11.
-
-### 10.3 Captura headless (modo producción)
-```bash
-python3 src/capture.py --max-bursts 3
-ls data/captures/aruco_*/
-cat data/captures/aruco_*/[!_]*.json
-```
-
----
-
-## 11. Troubleshooting (todos vistos en deploy real)
+## 10. Problemas vistos en el despliegue real
 
 | Síntoma | Causa | Solución |
 |---|---|---|
-| `ImportError: libcudnn.so.8: cannot open shared object file` | Wheel torch 2.3 (cuDNN 8 era) en JP6.2 (cuDNN 9) | Reinstalar torch 2.5 (paso 4) |
-| `ImportError: libcusparseLt.so.0: cannot open shared object file` | cuSPARSELt no instalada | Paso 5 |
-| `UserWarning: Failed to initialize NumPy: _ARRAY_API not found` y/o `Numpy is not available` | numpy 2.x vs torch wheel numpy 1.x | `pip install 'numpy<2'` |
-| `RuntimeError: operator torchvision::nms does not exist` desde `~/torchvision-build/` | Importando source dir, no install | `cd ~` antes de importar |
-| `ModuleNotFoundError: No module named 'torchvision'` después de `python3 setup.py install --user` | Instaló en `~/.local`, venv no lo ve | Reinstalar con `pip install .` (sin `--user`) |
-| `AttributeError: module 'cv2' has no attribute 'aruco'` | opencv-python sin contrib sobreescribió a opencv-contrib-python | `pip uninstall opencv-python; pip install --force-reinstall opencv-contrib-python` |
-| Cámara no abre (`cv2.VideoCapture(0)`) | Permiso o índice incorrecto | `sudo usermod -aG video $USER`, verificar con `v4l2-ctl --list-devices` |
-| `cv2.imshow` cuelga o crashea | OpenCV sin GUI build | Headless es el modo de producción de todos modos. Para dev, usar `pip install opencv-python` con GUI (conflicto resuelto solo en dev) |
-| `pypi.jetson-ai-lab.dev` falla DNS | Tu red bloquea o tu DNS no resuelve | Skip ese índice, usar `developer.download.nvidia.com` directo |
-| Marcadores no detectados a >3 m | Marker chico en píxeles | Bajar `min_marker_size_px` o imprimir más grande (18-20 cm) |
-| FPS < 5 con CUDA disponible | Inferencia accidentalmente en CPU | Forzar `device: cuda:0` en config; verificar con `nvidia-smi` que GPU está activa |
+| `ImportError: libcudnn.so.8` | Wheel torch 2.3 (cuDNN 8) en JetPack 6.2 (cuDNN 9) | Paso 3 |
+| `ImportError: libcusparseLt.so.0` | cuSPARSELt no instalada | Paso 4 |
+| `Failed to initialize NumPy: _ARRAY_API not found` o `Numpy is not available` | numpy 2.x con un torch compilado contra 1.x | `pip install 'numpy<2'` |
+| `RuntimeError: operator torchvision::nms does not exist` | Se importa desde `~/torchvision-build/` | Importar desde otro directorio |
+| `ModuleNotFoundError: No module named 'torchvision'` tras `setup.py install --user` | Quedó en `~/.local`, fuera del venv | `pip install .` sin `--user` |
+| `AttributeError: module 'cv2' has no attribute 'aruco'` | opencv-python sin contrib pisó a opencv-contrib-python | Paso 7 |
+| La cámara no abre | Permiso o índice | `sudo usermod -aG video $USER`; `v4l2-ctl --list-devices` |
+| `cv2.imshow` cuelga | OpenCV sin GUI | La producción es headless; para depurar, `pip install opencv-python` con GUI |
+| `pypi.jetson-ai-lab.dev` no resuelve | Red o DNS | Usar `developer.download.nvidia.com` directo |
+| Marcadores no detectados a más de 3 m | Marcador pequeño en píxeles | Bajar `min_marker_size_px` o imprimir a 18–20 cm |
+| FPS < 5 con CUDA disponible | Inferencia en CPU | `device: cuda:0` en `config.yaml`; comprobar con `nvidia-smi` |
 
----
+## 11. Opcionales
 
-## 12. Optimización (después del setup base)
-
-### TensorRT FP16 export (2–4× FPS)
-```bash
-python3 -c "
-from ultralytics import YOLO
-m = YOLO('models/yolo26n.pt')
-m.export(format='engine', half=True, device=0)
-"
-```
-Luego en `config.yaml`:
-```yaml
-cow_detector:
-  model: models/yolo26n.engine
-```
-
----
-
-## 13. Servicio systemd (operación 24/7 en finca)
+TensorRT FP16 (2–4× FPS):
 
 ```bash
-sudo tee /etc/systemd/system/cow-capture.service <<'EOF'
+python3 -c "from ultralytics import YOLO; YOLO('models/yolo26n.pt').export(format='engine', half=True, device=0)"
+# y en config.yaml: cow_detector.model: models/yolo26n.engine
+```
+
+Servicio systemd para operación continua (sustituir `USUARIO`):
+
+```ini
 [Unit]
-Description=Cow weight estimation capture pipeline
+Description=Captura de ráfagas para estimación de peso bovino
 After=network.target
 
 [Service]
 Type=simple
-User=chutluis
-WorkingDirectory=/home/chutluis/Documents/thesis-weigh-estimation/prototype
-Environment="PATH=/home/chutluis/venv-thesis/bin:/usr/bin"
-ExecStart=/home/chutluis/venv-thesis/bin/python3 src/capture.py --config config.yaml
+User=USUARIO
+WorkingDirectory=/home/USUARIO/bovino-vision/pipeline
+Environment="PATH=/home/USUARIO/venv-bovino/bin:/usr/bin"
+ExecStart=/home/USUARIO/venv-bovino/bin/python3 src/capture.py --config config.yaml
 Restart=always
 RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
-EOF
-
-sudo systemctl daemon-reload
-sudo systemctl enable --now cow-capture
-sudo journalctl -u cow-capture -f
 ```
 
----
-
-## 14. Checklist final antes de instalar en finca
-
-- [x] Smoke test pasa (`python3 tests/test_pipeline_smoke.py`)
-- [ ] Live viewer abre cámara C270 (`python3 src/detect_live.py`)
-- [ ] FPS razonable (>15 esperado en Orin Nano con `device: cuda:0`)
-- [ ] Burst real escribe en `data/captures/aruco_*/`
-- [ ] Marcadores impresos en PVC sintra (15 cm), DICT_6X6_250, IDs únicos
-- [ ] Service systemd habilitado y reiniciable
-- [ ] Disco con espacio (~1 GB por semana de capturas)
-- [ ] Sincronización temporal validada (timestamps UTC en metadata.json)
+```bash
+sudo systemctl daemon-reload && sudo systemctl enable --now cow-capture && journalctl -u cow-capture -f
+```
