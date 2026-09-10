@@ -12,6 +12,7 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 from ultralytics import YOLO
+from ultralytics.utils import ops
 
 
 @dataclass
@@ -54,14 +55,15 @@ class CowSegmenter:
             return []
 
         out: list[CowSegmentation] = []
-        masks_data = r.masks.data.cpu().numpy()  # (N, mh, mw) in mask resolution
+        # r.masks.data está a la resolución de ENTRADA de la red (letterbox con relleno, p. ej. 384×640
+        # para una foto 16:9), no a la de la imagen. Hay que recortar el relleno antes de escalar:
+        # redimensionar directo aplasta la silueta (−6 % de alto en ráfagas 4096×2304). scale_masks
+        # hace el recorte y el escalado con la misma geometría que usa Ultralytics para las cajas.
+        masks_data = ops.scale_masks(r.masks.data[None].float(), (h, w))[0].cpu().numpy()  # (N, h, w)
         for i, box in enumerate(r.boxes):
             xyxy = box.xyxy[0].cpu().numpy().astype(int)
             conf = float(box.conf[0].cpu().numpy())
-            raw = masks_data[i]
-            # Resize mask to the full frame resolution and binarize
-            mask = cv2.resize(raw, (w, h), interpolation=cv2.INTER_NEAREST)
-            mask = (mask > 0.5).astype(np.uint8)
+            mask = (masks_data[i] > 0.5).astype(np.uint8)
             out.append(
                 CowSegmentation(
                     confidence=conf,
