@@ -12,13 +12,14 @@ W = a·A^b → peso vivo estimado.
 
 | Directorio | Contenido |
 |---|---|
-| `pipeline/` | Pipeline Python de investigación: captura, anotación, extracción morfométrica, ajuste del modelo de peso, evaluaciones y herramientas de paridad. Corre en PC — aquí ocurre TODO el entrenamiento/ajuste. |
-| `app-benchmark/` | App Expo/React Native de benchmark: validó en un Galaxy A25 la inferencia LiteRT, el ArUco móvil y las paridades contra el pipeline (spike GO, ago 2026). Herramienta interna, no producto. |
-| `app/` | APK de producto (React Native + Expo): foto → peso, 100% offline. |
-| `docs/` | Requerimientos, protocolo de campo, arquitectura y decisiones, UI/UX. |
-| `informes/` | Resultados crudos de benchmarks y golden tests. |
-| `notebooks/` | Análisis estadístico reproducible. |
-| `data/` | Muestras curadas (los datos crudos de campo viven fuera del repo con manifiesto SHA-1). |
+| `pipeline/` | Código Python de investigación (PC): anotación, segmentación, morfometría, ajuste del modelo de peso, evaluaciones y exportación del modelo. Todo el entrenamiento y la validación ocurren aquí. |
+| `app/` | Wakx, la aplicación Android de producto (React Native + Expo): foto → peso, sin conexión. |
+| `app-benchmark/` | App con la que se midió en un Galaxy A25 la inferencia LiteRT, el ArUco móvil y la paridad con el pipeline (agosto de 2026). Herramienta interna. |
+| `docs/` | Requerimientos, protocolo de campo, arquitectura y UI. |
+| `informes/` | Benchmarks, paridades, evaluaciones del segmentador y pruebas en dispositivo, con sus datos (JSON, CSV, PNG, SQLite). |
+
+Los datos crudos de campo viven fuera del repositorio (`Thesis_final_raw/`, con `MANIFEST.sha1`); el repositorio lleva
+las fotos curadas, los pesos y el conjunto de validación anotado en `pipeline/data/`.
 
 ## Documentos clave
 - [Requerimientos y producto final](docs/01_requerimientos.md)
