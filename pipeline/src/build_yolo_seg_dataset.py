@@ -126,10 +126,16 @@ def sha256_file(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
-def resolve_grouped(cli_raw: str | None) -> Path:
+def resolve_grouped(cli_raw: str | None, strict: bool = True) -> Path:
+    """Directorio _grouped de las ráfagas: --raw, $BOVINO_RAW_GROUPED, data/field/raw/_grouped, ~/Documents/...
+
+    Con strict=False devuelve el último candidato aunque no exista (para módulos que fijan rutas al
+    importarse, como annotate_val.py y build_val_clean.py); el error aparece al abrir la imagen."""
     for cand in (cli_raw, *RAW_CANDIDATES):
         if cand and Path(cand).expanduser().is_dir():
             return Path(cand).expanduser()
+    if not strict:
+        return Path(RAW_CANDIDATES[-1])
     raise SystemExit("No encuentro las ráfagas _grouped. Usa --raw <dir> o exporta BOVINO_RAW_GROUPED "
                      "(copia íntegra en Thesis_final_raw/raw/_grouped, verificable con MANIFEST.sha1).")
 

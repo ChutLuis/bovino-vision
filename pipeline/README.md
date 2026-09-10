@@ -14,6 +14,8 @@ Durante desarrollo en macOS se usa la cámara integrada (FaceTime HD); la API de
 ```bash
 cd pipeline
 python3 -m pip install -r requirements.txt
+# Versiones exactas con las que se validó el pipeline en PC (CPU): ver cabecera del archivo
+python3 -m pip install -r requirements-lock.txt
 python3 -m pytest -q          # pruebas (tests/)
 ```
 

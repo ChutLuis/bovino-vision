@@ -13,9 +13,14 @@ import cv2
 import numpy as np
 from ultralytics import SAM
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from build_yolo_seg_dataset import resolve_grouped  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 FIELD = ROOT / "data" / "field"
-GROUPED = Path("/home/luisc/Documents/Thesis_final_raw/raw/_grouped")
+# Ráfagas crudas: $BOVINO_RAW_GROUPED, data/field/raw/_grouped o ~/Documents/Thesis_final_raw/raw/_grouped
+GROUPED = resolve_grouped(None, strict=False)
 REPESAJE = FIELD / "repesaje_1206"
 OUT_DIR = ROOT / "data" / "val_clean"
 
