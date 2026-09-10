@@ -8,18 +8,32 @@ Mapeo de identidad CORRECTO: carpeta (ultimos 4 del arete) -> inventario -> nomb
 
 Salida: data/field/features_grouped.csv (1 fila por foto/mascara) -> luego mediana por vaca.
 
-    python3 src/measure_grouped_masks.py
+Rutas: las fotos se buscan como build_yolo_seg_dataset.py (--raw, $BOVINO_RAW_GROUPED, ...);
+las máscaras por defecto en <raw>/<carpeta>/mascaras/ (los PNG originales de jun 2026) o, con
+--masks-root, en <masks-root>/<carpeta>/mascaras/ (p. ej. la regeneración de auto_mask.py --out).
+
+    python3 src/measure_grouped_masks.py                       # máscaras viejas -> features_grouped.csv
+    python3 src/measure_grouped_masks.py --masks-root ~/Documents/Thesis_final_raw/mascaras_regen_20260909 \
+        --out data/field/features_grouped.csv
 """
 from __future__ import annotations
-import csv, re, sys, unicodedata
+import argparse, csv, re, sys, unicodedata
 from pathlib import Path
 import cv2
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from build_yolo_seg_dataset import resolve_grouped
 from core.aruco import ArucoDetector
 from core.calibration import from_marker
 from core.morphometry import measure
+
+ROOT = Path(__file__).resolve().parent.parent
+ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+ap.add_argument("--raw", help="directorio _grouped con las fotos de las ráfagas")
+ap.add_argument("--masks-root", help="raíz con <carpeta>/mascaras/*.png; por defecto la misma que --raw")
+ap.add_argument("--out", default=str(ROOT / "data" / "field" / "features_grouped.csv"))
+args = ap.parse_args()
 
 MARKER_CM = 15.0
 
@@ -48,7 +62,7 @@ last4_to_name = {}
 for nm, ar in INV.items():
     last4_to_name.setdefault(ar[-4:], []).append(norm(nm))
 
-field = Path("data/field")
+field = ROOT / "data" / "field"
 # pesos por nombre
 peso = {}
 for r in csv.DictReader(open(field / "pesos_orden_pesaje.csv")):
@@ -62,7 +76,9 @@ OUT = ["photo","folder","cow_id","arete","weight_kg","marker_px","px_per_cm",
 rows, skip_no_marker, skip = [], 0, 0
 cubiertas, sin_peso, ambig = set(), set(), set()
 
-grouped = field / "raw" / "_grouped"
+grouped = resolve_grouped(args.raw)
+masks_root = Path(args.masks_root).expanduser() if args.masks_root else grouped
+print(f"fotos: {grouped}\nmáscaras: {masks_root}")
 for d in sorted(grouped.iterdir()):
     if not d.is_dir() or d.name.startswith("_"):
         continue
@@ -86,7 +102,7 @@ for d in sorted(grouped.iterdir()):
             sin_peso.add(cow); continue
         w = peso[cow]
 
-    mdir = d / "mascaras"
+    mdir = masks_root / d.name / "mascaras"
     if not mdir.exists():
         continue
     for mp in sorted(mdir.glob("*.png")):
@@ -116,7 +132,8 @@ for d in sorted(grouped.iterdir()):
         rows.append(row)
         cubiertas.add(cow)
 
-out_csv = field / "features_grouped.csv"
+out_csv = Path(args.out).expanduser()
+out_csv.parent.mkdir(parents=True, exist_ok=True)
 with open(out_csv, "w", newline="") as f:
     w = csv.DictWriter(f, fieldnames=OUT); w.writeheader()
     for r in rows:

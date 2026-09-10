@@ -7,9 +7,12 @@ Agregacion: mediana por vaca (+ filtro relativo de outliers intra-vaca, 18% sobr
 que quita escalas malas SIN asumir un cm absoluto). Evaluacion: leave-one-out por animal.
 Modelos: alometrico area->peso (principal) y lineal 6-feat. Reporta MAPE/IC95/R2/RMSE/N.
 
-    python3 src/eval_compare_datasets.py
+    python3 src/eval_compare_datasets.py                                   # CSV canónicos de data/field
+    python3 src/eval_compare_datasets.py --grouped informes/x/features_grouped_v2.csv
 """
 from __future__ import annotations
+import argparse
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LinearRegression
@@ -78,8 +81,14 @@ def evaluate(name,df):
     return d
 
 
-fh=pd.read_csv("data/field/features_fotos_hoy.csv").dropna(subset=FEATURES+["weight_kg"])[["cow_id","weight_kg"]+FEATURES]
-gr=pd.read_csv("data/field/features_grouped.csv").dropna(subset=FEATURES+["weight_kg"])[["cow_id","weight_kg"]+FEATURES]
+ROOT=Path(__file__).resolve().parent.parent
+ap=argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+ap.add_argument("--fotos-hoy", default=str(ROOT/"data/field/features_fotos_hoy.csv"))
+ap.add_argument("--grouped", default=str(ROOT/"data/field/features_grouped.csv"))
+args=ap.parse_args()
+print(f"fotos_hoy: {args.fotos_hoy}\nrafagas:   {args.grouped}")
+fh=pd.read_csv(args.fotos_hoy).dropna(subset=FEATURES+["weight_kg"])[["cow_id","weight_kg"]+FEATURES]
+gr=pd.read_csv(args.grouped).dropna(subset=FEATURES+["weight_kg"])[["cow_id","weight_kg"]+FEATURES]
 print(f"fotos_hoy: {len(fh)} fotos / {fh.cow_id.nunique()} vacas | rafagas: {len(gr)} fotos / {gr.cow_id.nunique()} vacas")
 print(f"rafagas longitud cruda: min {gr.body_length_cm.min():.0f} max {gr.body_length_cm.max():.0f} mediana {gr.body_length_cm.median():.0f} cm")
 
