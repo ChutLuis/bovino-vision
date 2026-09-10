@@ -1,238 +1,123 @@
-# Arquitectura del APK — Decisiones de diseño
-**Correcciones atendidas: #9 (arquitectura/UML), #11 (flujo productivo), #12 (almacenamiento productivo)**
-Estado: BORRADOR v0.1 — decisiones D1–D3 abiertas a debate
+# Arquitectura de la aplicación
 
-## Principio rector
-Un solo APK (producto), dos flujos de datos separados:
-- **Entrenamiento**: offline, en PC (`pipeline/`). El teléfono solo es cámara.
-- **Productivo**: inferencia on-device en el teléfono. Nunca entrena, nunca requiere red.
+Wakx es un solo APK con dos flujos de datos separados. El entrenamiento y la validación ocurren en PC (`pipeline/`);
+el teléfono ejecuta artefactos congelados y no necesita red. Dispositivo de referencia: Samsung Galaxy A25
+(Exynos 1280, 6 GB de RAM, sin GPU aprovechable). Lo que cumple ahí cumple en el parque de teléfonos del usuario objetivo.
 
-Dispositivo de validación mínima: **Samsung Galaxy A25** (Exynos 1280, 6 GB RAM, sin GPU
-dedicada aprovechable). Si cumple RNF-02 (≤ 3 s/foto) ahí, cumple en el parque real
-de teléfonos del usuario objetivo.
+## Flujo de datos: entrenamiento y productivo
 
-## D1 — Formato de ejecución del modelo: **LiteRT FP32** (decisión final)
+```mermaid
+flowchart LR
+  subgraph PC["Entrenamiento y validación (PC, pipeline/)"]
+    F["Fotos de campo y pesos<br/>(crudos fuera del repo, curados en data/field/)"] --> M["Morfometría<br/>measure_fotos_hoy.py"]
+    M --> W["Ajuste W = a·A^b, leave-one-out<br/>eval_weight_fotos_hoy.py"]
+    F --> A["Máscaras manuales<br/>annotate_val.py → data/val_clean/"]
+    S["YOLO26n-seg preentrenado (COCO)"] --> E["Exportación LiteRT FP32<br/>+ model_manifest.json"]
+    A --> V["IoU y paridad<br/>eval_finetuned_iou.py, eval_segmenter_parity.py"]
+    E --> V
+  end
+  W --> B[("app/assets/model_bundle/<br/>yolo26n-seg.tflite · model_manifest.json<br/>weight_model.json · golden_cases.json")]
+  E --> B
+  subgraph APK["Productivo (teléfono, app/)"]
+    B --> I["Segmentación → marcador → área → peso"]
+    C["Foto (cámara o galería)"] --> I --> R["Resultado"] --> D[("SQLite (WAL) +<br/>fotos en directorio privado")] --> X["CSV por intent de compartir"]
+  end
+```
 
-**Evolución documentada:** v0.1 eligió "TFLite FP16" → la etapa 1 del spike reveló
-que Ultralytics 8.4 ya no ofrece FP16 en LiteRT (opciones: FP32, INT8, w8a32) →
-la etapa 2 mostró que w8a32 falla en el runtime móvil → **FP32 (12 MB) es la
-decisión final**, validada en el A25 con margen 5.5× sobre el umbral de latencia.
-La tabla siguiente conserva el análisis original (v0.1) como registro histórico:
+Del PC al teléfono solo viaja el paquete `model_bundle/`, versionado junto. Del teléfono no sale nada salvo el CSV
+que el usuario decide compartir.
 
-| Opción | Veredicto | Razón |
+## Componentes
+
+```
+app/src/
+├── screens/        SplashScreen, OnboardingScreen, CapturaScreen, ProcesandoScreen, ResultadoScreen, HistorialScreen
+├── providers/      ModelProvider: carga y calienta el modelo al abrir la app
+├── domain/         estimarPeso.ts (orquestación y rechazos), types.ts
+├── vision/         image.ts (JPEG, orientación EXIF, letterbox 640×640) · tflite.ts (react-native-fast-tflite)
+│                   segment.ts (máscara, vaca de mayor área) · aruco.ts (js-aruco2 a resolución fuente)
+│                   morphometry.ts (área en cm²) · modelManifest.ts, config.ts (clase y hash del segmentador)
+├── estimation/     bundle.ts (weight_model.json) · weightModel.ts (W = a·A^b)
+├── data/           db/schema.ts, db/dao.ts (expo-sqlite) · photos.ts (copia privada) · export/csv.ts
+└── ui/, navigation/
+```
+
+Cada módulo de `vision/` y `estimation/` es espejo de uno del pipeline, mismo algoritmo en otra plataforma:
+
+| App | Pipeline | Cómo se comprueba |
 |---|---|---|
-| **TFLite FP16** | **ELEGIDA** | Export directo desde Ultralytics (`model.export(format="tflite", half=True)`); runtime estándar de Android; delegates XNNPACK (CPU) disponibles en cualquier gama; YOLO26n-seg queda en ~6–12 MB |
-| ONNX Runtime Mobile | Descartada | Viable, pero segundo ecosistema de dependencias sin ventaja clara en Android puro |
-| ExecuTorch / PyTorch Mobile | Descartada | Menos maduro para despliegue Android de modelos Ultralytics |
-| NCNN | Descartada | Excelente rendimiento pero toolchain de conversión más frágil; mantenimiento por una sola persona post-tesis |
-| INT8 (cuantización entera) | Diferida | Ganancia de velocidad real, pero exige dataset de calibración y re-validar MAPE; solo si el A25 no cumple RNF-02 en FP16 |
+| `segment.ts` + `image.ts` | `core/segmenter_litert.py` (y `core/segmenter.py` para el `.pt`) | `tests/test_parity_a25.py`: mismas detecciones y área en 10 fotos medidas en el A25 |
+| `aruco.ts` | `core/aruco.py` + `core/calibration.py` | `eval_aruco_parity.py`: escala js-aruco2 vs OpenCV |
+| `morphometry.ts` | `core/morphometry.py` | Área en cm² a partir de la misma máscara y escala |
+| `weightModel.ts` | `eval_weight_fotos_hoy.py` | `npm run test:golden`: 10 casos con tolerancia 0.01 kg |
+| `modelManifest.ts` | `make_model_manifest.py` | `tests/test_export_contract.py`: sha256 del `.tflite` = manifiesto |
 
-**Riesgo controlado:** la exportación puede degradar la máscara → el plan de pruebas
-incluye re-medir IoU y MAPE sobre el conjunto de campo CON el modelo TFLite (no el .pt),
-en el teléfono. Es la verificación "probé la app, no solo el prototipo".
+## Secuencia foto → peso
 
-### Resultados del spike — etapa 1: exportación y paridad (25 ago 2026, en PC)
-**Corrección a D1:** Ultralytics 8.4 ya no soporta FP16 en LiteRT (nuevo nombre de
-TFLite). Opciones reales: FP32, INT8 completo (requiere calibración) y **w8a32**
-(cuantización dinámica: pesos INT8, activaciones FP32, **sin calibración**).
-
-| Modelo | Tamaño | IoU vs .pt (35 fotos de campo, medio/mín) | Error de área vs .pt |
-|---|---|---|---|
-| yolo26n-seg.pt (referencia) | 5.9 MB | — | — |
-| LiteRT FP32 | 12 MB | 0.985 / 0.971 | ~similar |
-| **LiteRT w8a32** | **3.5 MB** | 0.983 / 0.971 | medio 0.71%, máx 2.55% |
-
-Efecto en el peso del peor caso de área (2.55%): W ∝ A^0.706 → ~1.8% de sesgo,
-dentro del presupuesto de error (MAPE 7.71%, umbral <10%). **Candidato principal:
-w8a32** (3.5 MB, 4× más chico); el benchmark de velocidad en el A25 confirma.
-
-Nota metodológica del propio spike: la primera medición dio IoU 0.70 por un error
-de geometría en la comparación (la máscara LiteRT conserva el letterbox 640×640 y
-la .pt no; redimensionar sin recortar el padding aplasta la silueta). Corregido el
-recorte, la paridad real es 0.98. Lección idéntica a la de escala ArUco: primero
-audita el instrumento de medición, después juzga al modelo.
-
-### Resultados del spike — etapa 2: benchmark en dispositivo (26 ago 2026, Galaxy A25)
-Corrida completa exportada (`benchmark_results.json`, app-benchmark): 10 fotos de
-campo, 1 warmup + 5 corridas medidas por foto.
-
-| Métrica | Resultado | Criterio | Veredicto |
-|---|---|---|---|
-| Segmentación FP32 (p50 / p95) | **449 / 466 ms** | ≤ 2,500 ms | **GO (margen 5.5×)** |
-| Segmentación w8a32 | falla en primer `runSync()` | — | fallback FP32 pre-autorizado |
-| ArUco (js-aruco2) decodificación | 10/10 | ≥ 9/10 | GO |
-| ArUco paridad de escala vs OpenCV subpíxel | **+1.2% medio / +2.2% máx, sesgo sistemático** | ≤ 1% | **FALLA — en corrección** |
-| Flujo total estimado (seg + ArUco + postproceso) | ~1.4 s | ≤ 3 s (RNF-02) | GO |
-
-**Decisión D3 confirmada por evidencia:** React Native + LiteRT es viable en el
-dispositivo objetivo. Referencia cruzada: el Jetson Orin Nano (GPU, 40 TOPS) hacía
-el pipeline completo en 266 ms; un teléfono de gama media lo hace en ~1.4 s en CPU
-— suficiente para captura foto-por-animal y argumento definitivo contra la
-arquitectura cliente-servidor.
-
-**w8a32:** el artefacto valida en el intérprete de escritorio (IoU 0.983 vs .pt)
-pero falla en el runtime móvil (LiteRT 1.4.0 / react-native-fast-tflite 3.0.1).
-Causa raíz no diagnosticada por decisión de alcance: FP32 (12 MB) cumple el
-requerimiento con margen. Reabrir solo con: (1) prueba con `benchmark_model` CLI
-oficial de LiteRT vía adb (discrimina librería vs wrapper), (2) instrumentación
-del status de `TfLiteTensorCopyFromBuffer` en el wrapper, (3) identificación del
-tensor 295.
-
-**Paridad ArUco (`pipeline/src/eval_aruco_parity.py`):** js-aruco2 midió el marcador
-sistemáticamente más chico que OpenCV subpíxel en las 10 fotos (mismo signo) →
-escala +1.2%, área +2.4% media (máx +4.4%) → sesgo de peso ~+1.7%. Diagnóstico:
-detección a 960 px con esquinas de precisión entera sobre un marcador de 55–64 px
-(fotos WhatsApp de 1280 px). Dos mitigaciones en evaluación: (a) detectar a
-resolución completa — en producción la cámara nativa da marcadores de 180–250 px,
-donde ±1 px ≈ 0.5% de escala; (b) si no basta, refinamiento subpíxel propio o
-módulo nativo OpenCV mínimo. **Principio documentado: coherencia instrumental** —
-el modelo de peso se ajustó con áreas medidas por OpenCV; producción debe medir
-con precisión equivalente o re-calibrar los coeficientes con el instrumento final.
-
-**Paridad de área de segmentación A25 vs PC (misma selección, mayor área, conf 0.5):**
-dif media −0.24%, |máx| 0.72%, sin sesgo sistemático → **PASA el criterio ≤1%**.
-Con esto, la etapa de segmentación queda cerrada de punta a punta: el APK produce
-las mismas áreas que el pipeline validado de la tesis. Sobre la resolución de
-entrada: 640×640 no es una concesión del teléfono — es el punto de operación en
-el que se validó TODO el sistema (el IoU 0.86 y el MAPE 7.71% de la tesis se
-midieron con imgsz=640). Reentrenar/exportar a 960–1280 (≈4× píxeles, ≈4× latencia)
-cambiaría de instrumento sin evidencia de necesidad. Único frente abierto del
-spike: el sesgo de escala ArUco (experimento de resolución completa en curso).
-
-### Resultados del spike — etapa 3: ArUco a resolución completa → **SPIKE CERRADO: GO**
-(26 ago 2026, `informes/benchmark_a25_20260826_fullres.json`, schema v2)
-
-Con detección sobre la imagen fuente (1280×960, sin reducción a 960):
-- **Paridad de escala: PASA** — dif media +0.63%, máx 0.82% (antes: +1.2% / 2.2%).
-- Costo: aruco_ms subió de ~830 a ~1,400 ms. Flujo total ≈ 2.0 s < 3 s (RNF-02 ✓).
-- **Cold start medido: 3.97 s** (init JS → primera inferencia FP32, app recién
-  abierta). Implicación de UX: pantalla de carga con precarga del modelo al abrir
-  la app, no al tomar la foto.
-- Sesgo residual sigue siendo sistemático (+0.63%, mismo signo: esquinas de
-  precisión entera sin refinamiento subpíxel). Efecto en peso ≈ +0.9%, aceptable.
-  En producción la cámara nativa da marcadores de 180–250 px (vs 55–64 px en
-  estas fotos WhatsApp), donde el mismo error absoluto ≈ 0.15–0.2% de escala.
-  Backlog opcional: refinamiento subpíxel propio si la validación de campo del
-  APK muestra que el residual importa.
-
-**Veredicto del spike completo:** React Native + LiteRT FP32 + js-aruco2 a
-resolución completa cumple todos los criterios en el Galaxy A25. Se procede a
-construir el APK de producto sobre esta base.
-
-**Hallazgo de benchmark vs intuición:** el orden de rechazos asumido ("ArUco
-barato primero") resultó invertido en el A25: segmentación 449 ms < ArUco 830 ms.
-El orden definitivo del flujo se fija con los números de la iteración final.
-
-## D2 — Almacenamiento productivo: **SQLite (Room) + almacenamiento privado de la app**
-
-- Base de datos: Room (SQLite) — tablas `animal` (arete, nombre, categoría) y
-  `estimacion` (FK animal, peso_kg, intervalo, área_cm2, ruta_foto, timestamp, versión_modelo).
-- Fotos: directorio privado de la app (`filesDir`), nombradas por timestamp; no MediaStore
-  público (privacidad del hato = dato comercial del productor).
-- Exportación: CSV por intent de compartir (RF-11).
-- Sin nube, sin cuentas, sin telemetría → RNF-01/RNF-06 por construcción.
-- `versión_modelo` en cada estimación: trazabilidad de qué modelo produjo qué peso
-  (si el modelo se actualiza, el historial no miente).
-
-## D3 — Stack de la app: **React Native — CONFIRMADO por el spike (GO, 26 ago 2026)**
-
-**Decisión revisada tras análisis (v0.2).** Criterios: el núcleo de inferencia
-(TFLite) corre en C++ nativo vía JSI en ambos stacks → rendimiento del modelo
-idéntico; la diferencia real es riesgo de calendario y propiedad del código.
-El desarrollador domina React Native, no Kotlin: con RN escribe y defiende
-~70% de la app él mismo; con Kotlin nativo defendería código ajeno (riesgo
-tipo "mirroring"). La competencia del desarrollador es un factor de riesgo
-de ingeniería legítimo (metodología, corr. 4).
-
-- **UI/lógica:** React Native + react-native-vision-camera (captura y feedback en vivo).
-- **Inferencia:** react-native-fast-tflite (JSI) con el modelo LiteRT FP32 de D1.
-- **ArUco (único riesgo técnico del stack):** tres alternativas, decide el spike:
-  1. `react-native-fast-opencv` (JSI) si expone el módulo aruco.
-  2. Módulo nativo propio mínimo: solo `objdetect/aruco` de OpenCV, una función
-     `detectarMarcador(foto) → esquinas`. Más trabajo, APK liviano.
-  3. `js-aruco2` (JS puro, cero deps nativas) — solo si pasa la prueba de paridad.
-- Mínimo Android 10 / API 29 (RNF-05).
-
-### Spike de validación (1–2 días, en el Samsung A25)
-Sale un veredicto GO/NO-GO de RN; si NO-GO, fallback a Kotlin (v0.1 de este doc).
-1. App mínima RN + fast-tflite cargando `yolo26n-seg` FP16 → medir ms/inferencia
-   sobre 5 fotos de campo reales. Umbral: segmentación ≤ 2.5 s.
-2. Alternativa ArUco (en orden 1→2→3) decodificando ID 0 en 5 fotos de campo.
-   Medir ms y tasa de decodificación.
-3. **Prueba de paridad:** mismas 34 fotos por el pipeline Python y por RN —
-   comparar factor cm/px y área (cm²). Criterio: diferencia ≤ 1%; si el área
-   difiere más, la alternativa ArUco muere (el error de escala se propaga al
-   cuadrado en el área y de ahí al peso).
-4. Benchmark del orden de rechazos (RF-07): medir ArUco vs segmentación por
-   separado; el barato-y-confiable se ejecuta primero.
-
-## Componentes (base del diagrama de componentes, corr. 9)
-
-```
-app/ (React Native + Expo, TypeScript)
-├── src/screens/       # CapturaScreen, ResultadoScreen, HistorialScreen, AnimalScreen
-├── src/camera/        # react-native-vision-camera: preview + feedback en vivo (marcador ✓ / animal ✓)
-├── src/vision/
-│   ├── segmenter.ts       # react-native-fast-tflite (LiteRT FP32) → máscara   (≈ segmenter.py; validado en app-benchmark)
-│   ├── arucoScale.ts      # js-aruco2 a resolución completa → cm/px            (≈ aruco.py + calibration.py; validado en app-benchmark)
-│   └── morphometry.ts     # área, longitud, altura desde máscara               (≈ morphometry.py)
-├── src/estimation/
-│   └── weightModel.ts     # W = a·A^b + intervalo de predicción (coeficientes congelados; golden test en informes/)
-├── src/data/
-│   ├── db/                # expo-sqlite: animales, estimaciones (con versión_modelo)
-│   └── export/            # CSV vía share intent
-└── src/domain/
-    └── estimarPeso.ts     # orquesta el flujo foto → peso (orden de rechazos medido)
+```mermaid
+sequenceDiagram
+  actor U as Usuario
+  participant P as Pantallas
+  participant O as estimarPeso.ts
+  participant S as segment.ts (LiteRT)
+  participant A as aruco.ts
+  participant W as weightModel.ts
+  participant DB as SQLite
+  U->>P: foto (cámara o galería)
+  P->>O: estimar(foto)
+  O->>S: segmentar (640×640, clase 19, conf ≥ 0.5)
+  S-->>O: máscara y caja de la vaca de mayor área, o "sin vaca"
+  O->>A: buscar marcador ID 0 a resolución fuente
+  A-->>O: cm/px, o "sin marcador" / "marcador ilegible"
+  O->>W: área (cm²)
+  W-->>O: peso = a·A^b
+  O-->>P: peso, silueta y recuadro, o rechazo con causa
+  U->>P: guardar con arete
+  P->>DB: animal; estimacion(peso_kg, area_cm2, version_modelo, ruta_foto)
 ```
 
-Cada módulo de `src/vision/` y `src/estimation/` es espejo 1:1 de un módulo
-Python del `pipeline/` — mismo algoritmo, otra plataforma — y los de visión ya
-tienen implementación de referencia probada en `app-benchmark/src/`. Ese mapeo
-es el argumento de "el APK ES el prototipo validado, empacado".
-(La estructura Kotlin equivalente de v0.1 quedó descartada junto con D3-Kotlin.)
+Se segmenta antes de leer el marcador porque en el A25 cuesta 0.45 s frente a 1.4 s: una foto sin vaca se rechaza
+antes de pagar lo caro. Tiempo total ≈ 2.0 s por foto; arranque en frío 3.97 s, por eso el modelo se carga al abrir
+la app y no al tomar la foto.
 
-## Flujo foto → peso (base del diagrama de secuencia, corr. 9)
+## Decisiones y evidencia
 
-1. Pantalla de captura (react-native-vision-camera) entrega la foto.
-2. `Segmenter` (LiteRT FP32): sin vaca con confianza ≥ 0.5 → **rechazo con causa** (RF-07).
-3. `ArucoScale` (js-aruco2, resolución completa): sin marcador legible → rechazo con causa.
-4. `Morphometry`: máscara + escala cm/px → área lateral (cm²), longitud, altura.
-5. `WeightModel`: área → peso ± intervalo (95%).
-6. Pantalla de resultado: peso + overlay de silueta sobre la foto (RF-06).
-7. Usuario confirma animal (arete) → SQLite insert → historial actualizado.
+| Decisión | Elección | Evidencia |
+|---|---|---|
+| Formato del modelo | LiteRT FP32 (12 MB) | Segmentación p50 456 ms, p95 470 ms en el A25 (`informes/benchmark_a25_20260826_fullres.json`), margen 5.5× sobre el umbral de 2.5 s. IoU 0.985 frente al `.pt` en 35 fotos de campo. La variante w8a32 (3.5 MB) valida en PC (IoU 0.983) pero falla en el runtime móvil (LiteRT 1.4.0, react-native-fast-tflite 3.0.1); INT8 completo exigiría calibración y revalidar el MAPE. |
+| Resolución de entrada | 640×640 | Es el punto de operación con el que se validó el sistema (IoU 0.86, MAPE 7.71 %). Entrar a 960–1280 cuadruplica píxeles y latencia sin evidencia de necesidad. |
+| Lectura del marcador | js-aruco2 a resolución fuente | `react-native-fast-opencv` no expone `aruco`. A 960 px la escala salía +1.2 % (esquinas enteras sobre marcadores de 55–64 px); a resolución fuente, +0.63 % media y 0.82 % máximo, 10 de 10 decodificados, ≈ 1.4 s (`pipeline/src/eval_aruco_parity.py`). En producción la cámara entrega marcadores de 180–250 px. |
+| Segmentador | YOLO26n-seg preentrenado en COCO | El afinado empeora sobre las 40 máscaras manuales: IoU 0.725 frente a 0.851 (`pipeline/FINETUNING.md`). La ruta del APK da IoU 0.868 y elige la vaca correcta en 38 de 40 (`informes/iou_val_manual_apk_20260909/`). |
+| Varias vacas en cuadro | La de mayor área | 38 de 40 sobre las manuales; ninguna regla basada en el marcador mejora (`informes/seleccion_vaca_20260910/`). |
+| Stack | React Native + Expo, inferencia por JSI | El núcleo de inferencia corre en C++ nativo vía JSI en cualquier stack, así que el rendimiento no depende de la elección; React Native reutiliza los módulos ya validados en `app-benchmark/`. |
+| Almacenamiento | expo-sqlite y directorio privado de la app | Sin nube, cuentas ni telemetría (RNF-01, RNF-06). Exportación solo por intent de compartir (RF-11). |
+| Trazabilidad del modelo | `model_manifest.json` y `version_modelo = peso:<versión>;seg:<sha256[0:16]>` | El hash real del `.tflite` coincide con el manifiesto y con cada fila de SQLite y del CSV; probado en el A25 (`informes/trazabilidad_a25_20260910/`). |
 
-**Orden de rechazos fijado por el benchmark** (no por intuición): la segmentación
-(0.45 s) es más barata que ArUco (1.4 s) en el A25, así que se falla-rápido con
-la vaca antes de pagar el marcador — inverso al supuesto original de v0.1.
-Tiempo total medido en A25: **~2.0 s** ≤ 3 s (RNF-02 ✓); cold start 3.97 s →
-precargar el modelo al abrir la app.
+## Coherencia instrumental
 
-### Emulación de la ruta del APK en PC, validada contra el A25 (9 sep 2026)
-`pipeline/src/core/segmenter_litert.py` reproduce en Python, paso a paso, `image.ts` y `segment.ts`
-(letterbox bilineal 640×640 con relleno 114/255, LiteRT, Σ coef·prototipo > 0 recortado a la caja en
-la rejilla 160×160, vecino más cercano al tamaño original). Sobre las 10 fotos del benchmark del 26 ago
-coincide con lo que registró el Galaxy A25: mismas detecciones en 10/10, área media −0.014 % (|máx|
-0.205 %), confianza ±0.006, caja ±1.2 px; la única diferencia es el decodificador JPEG (jpeg-js vs
-libjpeg). **Consecuencia:** lo que se mida en PC con el `.tflite` vale para el teléfono, y queda una
-prueba automática (`pipeline/tests/test_parity_a25.py`) que falla si la app y el pipeline divergen.
+El modelo de peso se ajustó con áreas medidas por el pipeline, así que la app debe medir igual. Emulación de la ruta
+del APK en PC frente al A25: mismas detecciones en 10 de 10 fotos, área −0.014 % media, |máx| 0.205 %. `.pt` frente
+a LiteRT: −0.25 % media, ≤ 0.62 % en fotos 4:3 (`informes/paridad_segmentador_20260909/`). La app es el instrumento
+de referencia; el `.pt` es su aproximación en PC.
 
-Con eso se evaluó el segmentador desplegado contra las 40 máscaras manuales de `pipeline/data/val_clean`
-(24 animales, conf 0.5): IoU de la vaca objetivo **0.868** (laterales controladas 0.924), vaca correcta en
-38/40, ninguna foto sin detección (`informes/iou_val_manual_apk_20260909/`). Es la primera medición del
-instrumento desplegado contra referencia independiente del modelo.
+## Almacenamiento
 
-Dos hallazgos del ejercicio:
-- **Bug en el pipeline de PC, no en el APK.** `CowSegmenter` redimensionaba la máscara de Ultralytics sin
-  recortar el relleno del letterbox rectangular; en fotos 16:9 la silueta quedaba aplastada un 6 % en
-  vertical. Las fotos 4:3 del protocolo (1280×960) no tenían relleno y no se vieron afectadas: el MAPE
-  7.71 % y la paridad de agosto siguen válidos. Corregido con `ops.scale_masks`; detalle en
-  `pipeline/FINETUNING.md` y en `informes/mascaras_rafagas_regen_20260910/`.
-- **Letterbox distinto, mismo modelo.** Ultralytics en PC usa letterbox rectangular con relleno mínimo;
-  el APK usa 640×640 fijo. Con fotos 4:3 la diferencia de área es −0.25 % media (≤ 0.62 %); a conf 0.5 el
-  APK detecta dos fotos del 12/06 que el `.pt` pierde. El APK es el instrumento de referencia; el `.pt`
-  es su aproximación en PC.
+| Dato | Dónde | Notas |
+|---|---|---|
+| Fotos crudas de campo (ráfagas) | Fuera del repositorio: `Thesis_final_raw/` con `MANIFEST.sha1` | Los scripts las toman de `--raw` o `$BOVINO_RAW_GROUPED` |
+| Fotos curadas, pesos, morfometría, validación manual | `pipeline/data/field/`, `pipeline/data/val_clean/` | Versionados (`README_DATASETS.md`) |
+| Dataset YOLO-seg | `pipeline/data/field/seg_dataset/` | Generado por el builder; no se versiona |
+| Modelos | `pipeline/models/` (no versionados; `models/README.md` con sha256) y `app/assets/model_bundle/` (versionado) | |
+| Estimaciones del usuario | `files/SQLite/wakx.db` (WAL): tablas `animal` y `estimacion` | Copiar `.db`, `-wal` y `-shm` para leerla fuera del teléfono |
+| Fotos confirmadas | `files/wakx-fotos/` (directorio privado de la app) | No entran a MediaStore |
+| Exportación | CSV por intent de compartir | Único dato que sale del dispositivo |
 
-## Fuera del APK (se queda en `pipeline/`, PC)
-Anotación de máscaras, fine-tuning, ajuste alométrico, evaluaciones estadísticas,
-generación de marcadores. El APK consume artefactos congelados: `model.tflite` +
-coeficientes `{a, b}` + parámetros de intervalo, versionados juntos.
+## Requisitos no funcionales verificados en el A25
+
+| Requisito | Verificación |
+|---|---|
+| RNF-01 sin conexión | Ningún módulo de red en el flujo de estimación; modelo y coeficientes dentro del APK |
+| RNF-02 ≤ 3 s por foto | ≈ 2.0 s (segmentación 0.45 s + marcador 1.4 s + postproceso) |
+| RNF-04 APK razonable | Modelo 12 MB |
+| RNF-06 privacidad | Datos en SQLite y directorio privado; salen solo por CSV compartido |
+| Compatibilidad | `minSdkVersion` no fijado: rige el valor por defecto de la plantilla de Expo 57 |
