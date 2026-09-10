@@ -44,15 +44,16 @@ pipeline/
 ├── JETSON_SETUP.md          # guía de la Jetson (plataforma de validación del prototipo)
 ├── pytest.ini
 ├── src/
-│   ├── core/                # aruco, calibration, segmenter, morphometry, seg_eval, ...
+│   ├── core/                # aruco, calibration, segmenter (.pt), segmenter_litert (ruta del APK en PC), morphometry, seg_eval, ...
 │   ├── capture.py, detect_live.py, generate_markers.py
 │   ├── annotate_val.py      # anotación manual del conjunto de validación (MobileSAM + pincel)
 │   ├── build_yolo_seg_dataset.py   # dataset YOLO-seg, split por animal sin fuga (--dry-run)
 │   ├── finetune_segmenter.py       # entrenamiento (no sobrescribe pesos)
-│   ├── eval_finetuned_iou.py       # IoU contra máscaras manuales, IC por animal, paneles
+│   ├── eval_finetuned_iou.py       # IoU contra máscaras manuales, IC por animal, paneles (.pt o .tflite)
+│   ├── eval_segmenter_parity.py    # .pt vs LiteRT-PC vs Galaxy A25 (paridad de área y decisión)
 │   ├── measure_*.py, eval_weight_*.py, train_weight_model.py   # morfometría y modelo de peso
 │   └── eval_aruco_parity.py        # paridad de escala móvil vs OpenCV
-├── tests/                   # pytest: parseo de etiquetas, split, manifiesto, contrato LiteRT
+├── tests/                   # pytest: parseo de etiquetas, split, manifiesto, contrato LiteRT, emulador vs A25
 ├── data/
 │   ├── field/               # datos de campo (ver data/field/README_DATASETS.md)
 │   ├── field/seg_dataset/   # generado, gitignored

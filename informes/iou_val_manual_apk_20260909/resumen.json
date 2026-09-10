@@ -1,0 +1,202 @@
+{
+  "meta": {
+    "fecha": "2026-09-09",
+    "val_dir": "/home/luisc/Documents/bovino-vision/pipeline/data/val_clean",
+    "gt": "png",
+    "target": 0,
+    "conf": 0.5,
+    "imgsz": 640,
+    "n_imagenes": 40,
+    "n_animales": 24,
+    "modelos": {
+      "pt": {
+        "ruta": "/home/luisc/Documents/bovino-vision/pipeline/models/yolo26n-seg.pt",
+        "clase": 19,
+        "sha256_16": "361fbfabab285c32"
+      },
+      "apk": {
+        "ruta": "/home/luisc/Documents/bovino-vision/pipeline/../app/assets/model_bundle/yolo26n-seg.tflite",
+        "clase": 19,
+        "sha256_16": "14b35a7ba712f8b0"
+      }
+    }
+  },
+  "por_estrato": {
+    "facil": {
+      "pt": {
+        "n": 15,
+        "eligio_objetivo_pct": 100.0,
+        "sin_deteccion": 0,
+        "iou_objetivo": 0.929,
+        "pct_iou_objetivo_gt_050": 100.0,
+        "err_area_medio_pct": 4.2,
+        "err_area_abs_medio_pct": 4.2,
+        "iou_emparejado": 0.929,
+        "recall_inst_050": 1.0,
+        "fp_total": 4
+      },
+      "apk": {
+        "n": 15,
+        "eligio_objetivo_pct": 100.0,
+        "sin_deteccion": 0,
+        "iou_objetivo": 0.924,
+        "pct_iou_objetivo_gt_050": 100.0,
+        "err_area_medio_pct": 3.8,
+        "err_area_abs_medio_pct": 3.8,
+        "iou_emparejado": 0.924,
+        "recall_inst_050": 1.0,
+        "fp_total": 5
+      }
+    },
+    "media": {
+      "pt": {
+        "n": 15,
+        "eligio_objetivo_pct": 86.7,
+        "sin_deteccion": 0,
+        "iou_objetivo": 0.78,
+        "pct_iou_objetivo_gt_050": 86.7,
+        "err_area_medio_pct": 10.7,
+        "err_area_abs_medio_pct": 10.7,
+        "iou_emparejado": 0.549,
+        "recall_inst_050": 0.657,
+        "fp_total": 6
+      },
+      "apk": {
+        "n": 15,
+        "eligio_objetivo_pct": 86.7,
+        "sin_deteccion": 0,
+        "iou_objetivo": 0.77,
+        "pct_iou_objetivo_gt_050": 86.7,
+        "err_area_medio_pct": 12.3,
+        "err_area_abs_medio_pct": 12.3,
+        "iou_emparejado": 0.567,
+        "recall_inst_050": 0.691,
+        "fp_total": 6
+      }
+    },
+    "dificil": {
+      "pt": {
+        "n": 10,
+        "eligio_objetivo_pct": 80.0,
+        "sin_deteccion": 2,
+        "iou_objetivo": 0.748,
+        "pct_iou_objetivo_gt_050": 80.0,
+        "err_area_medio_pct": -16.3,
+        "err_area_abs_medio_pct": 23.7,
+        "iou_emparejado": 0.646,
+        "recall_inst_050": 0.7,
+        "fp_total": 1
+      },
+      "apk": {
+        "n": 10,
+        "eligio_objetivo_pct": 100.0,
+        "sin_deteccion": 0,
+        "iou_objetivo": 0.932,
+        "pct_iou_objetivo_gt_050": 100.0,
+        "err_area_medio_pct": 4.9,
+        "err_area_abs_medio_pct": 4.9,
+        "iou_emparejado": 0.826,
+        "recall_inst_050": 0.9,
+        "fp_total": 2
+      }
+    },
+    "total": {
+      "pt": {
+        "n": 40,
+        "eligio_objetivo_pct": 90.0,
+        "sin_deteccion": 2,
+        "iou_objetivo": 0.828,
+        "pct_iou_objetivo_gt_050": 90.0,
+        "err_area_medio_pct": 1.5,
+        "err_area_abs_medio_pct": 11.5,
+        "iou_emparejado": 0.715,
+        "recall_inst_050": 0.796,
+        "fp_total": 11
+      },
+      "apk": {
+        "n": 40,
+        "eligio_objetivo_pct": 95.0,
+        "sin_deteccion": 0,
+        "iou_objetivo": 0.868,
+        "pct_iou_objetivo_gt_050": 95.0,
+        "err_area_medio_pct": 7.2,
+        "err_area_abs_medio_pct": 7.2,
+        "iou_emparejado": 0.766,
+        "recall_inst_050": 0.859,
+        "fp_total": 13
+      }
+    }
+  },
+  "bootstrap_por_animal": {
+    "apk": {
+      "iou_objetivo": {
+        "n_grupos": 24,
+        "dif_media": 0.0239,
+        "ic95": [
+          -0.0061,
+          0.0723
+        ],
+        "por_grupo": {
+          "AMBAR": -0.0131,
+          "ANITA": -0.0094,
+          "CHAPARRITA": -0.0092,
+          "CHIQUITA": -0.0047,
+          "CRISTY": -0.0005,
+          "DAMITA": -0.0044,
+          "DIAGIRA": -0.0058,
+          "ESTRELLITA": -0.0126,
+          "FORD": -0.0053,
+          "KARINA": 0.2309,
+          "LUBIANCA": -0.0036,
+          "MAFER": 0.0035,
+          "MARIQUITA": -0.0089,
+          "MARTINICA": -0.0064,
+          "MARTITA": -0.0044,
+          "NAHOMI": 0.0001,
+          "NOHELIA": -0.0051,
+          "NOHEMI": -0.0022,
+          "ODRA": -0.0089,
+          "OSCARINA": 0.4619,
+          "PERLA": -0.0015,
+          "SELENA": -0.0046,
+          "TATY": -0.0115,
+          "ZAFIRO": -0.0009
+        }
+      },
+      "err_area_objetivo": {
+        "n_grupos": 24,
+        "dif_media": 0.0359,
+        "ic95": [
+          -0.0004,
+          0.0882
+        ],
+        "por_grupo": {
+          "AMBAR": 0.0077,
+          "ANITA": -0.0073,
+          "CHAPARRITA": 0.021,
+          "CHIQUITA": -0.0046,
+          "CRISTY": -0.0034,
+          "DAMITA": 0.0005,
+          "DIAGIRA": 0.0063,
+          "ESTRELLITA": 0.0009,
+          "FORD": 0.0016,
+          "KARINA": 0.2642,
+          "LUBIANCA": -0.0008,
+          "MAFER": -0.0119,
+          "MARIQUITA": -0.0016,
+          "MARTINICA": 0.0032,
+          "MARTITA": -0.0159,
+          "NAHOMI": 0.1016,
+          "NOHELIA": -0.0035,
+          "NOHEMI": -0.0031,
+          "ODRA": -0.0011,
+          "OSCARINA": 0.5164,
+          "PERLA": -0.0119,
+          "SELENA": -0.0023,
+          "TATY": 0.0017,
+          "ZAFIRO": 0.0031
+        }
+      }
+    }
+  }
+}

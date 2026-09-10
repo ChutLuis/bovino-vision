@@ -1,0 +1,126 @@
+{
+  "meta": {
+    "fecha": "2026-09-09",
+    "conf": 0.5,
+    "cls": 19,
+    "pt": {
+      "ruta": "/home/luisc/Documents/bovino-vision/pipeline/models/yolo26n-seg.pt",
+      "sha256_16": "361fbfabab285c32"
+    },
+    "tflite": {
+      "ruta": "/home/luisc/Documents/bovino-vision/app/assets/model_bundle/yolo26n-seg.tflite",
+      "sha256_16": "14b35a7ba712f8b0"
+    }
+  },
+  "A_benchmark_a25": {
+    "n_fotos": 10,
+    "dets_iguales_pc_vs_a25": 10,
+    "dif_area_pc_litert_vs_a25_pct": {
+      "n": 10,
+      "media": -0.014,
+      "abs_media": 0.08,
+      "abs_max": 0.205
+    },
+    "dif_conf_pc_vs_a25_abs_max": 0.0057,
+    "bbox_maxdif_px_max": 1.17,
+    "dif_area_litert_vs_pt_pct": {
+      "n": 10,
+      "media": -0.252,
+      "abs_media": 0.376,
+      "abs_max": 0.619
+    },
+    "iou_litert_vs_pt": {
+      "n": 10,
+      "media": 0.964,
+      "abs_media": 0.964,
+      "abs_max": 0.974
+    },
+    "criterio_area_le_1pct": true
+  },
+  "B_val_manual": {
+    "facil": {
+      "n": 15,
+      "dets_iguales": 14,
+      "iou_pt_vs_litert": {
+        "n": 15,
+        "media": 0.962,
+        "abs_media": 0.962,
+        "abs_max": 0.968
+      },
+      "dif_area_pct": {
+        "n": 15,
+        "media": -0.41,
+        "abs_media": 0.514,
+        "abs_max": 1.47
+      },
+      "misma_decision_objetivo": 15,
+      "pt_eligio_objetivo": 15,
+      "litert_eligio_objetivo": 15,
+      "iou_objetivo_pt": 0.929,
+      "iou_objetivo_litert": 0.924
+    },
+    "media": {
+      "n": 15,
+      "dets_iguales": 14,
+      "iou_pt_vs_litert": {
+        "n": 15,
+        "media": 0.945,
+        "abs_media": 0.945,
+        "abs_max": 0.969
+      },
+      "dif_area_pct": {
+        "n": 15,
+        "media": 1.217,
+        "abs_media": 1.424,
+        "abs_max": 14.2
+      },
+      "misma_decision_objetivo": 15,
+      "pt_eligio_objetivo": 13,
+      "litert_eligio_objetivo": 13,
+      "iou_objetivo_pt": 0.78,
+      "iou_objetivo_litert": 0.77
+    },
+    "dificil": {
+      "n": 10,
+      "dets_iguales": 7,
+      "iou_pt_vs_litert": {
+        "n": 8,
+        "media": 0.966,
+        "abs_media": 0.966,
+        "abs_max": 0.971
+      },
+      "dif_area_pct": {
+        "n": 8,
+        "media": 0.419,
+        "abs_media": 0.691,
+        "abs_max": 2.0
+      },
+      "misma_decision_objetivo": 8,
+      "pt_eligio_objetivo": 8,
+      "litert_eligio_objetivo": 10,
+      "iou_objetivo_pt": 0.748,
+      "iou_objetivo_litert": 0.932
+    },
+    "total": {
+      "n": 40,
+      "dets_iguales": 35,
+      "iou_pt_vs_litert": {
+        "n": 38,
+        "media": 0.956,
+        "abs_media": 0.956,
+        "abs_max": 0.971
+      },
+      "dif_area_pct": {
+        "n": 38,
+        "media": 0.407,
+        "abs_media": 0.911,
+        "abs_max": 14.2
+      },
+      "misma_decision_objetivo": 38,
+      "pt_eligio_objetivo": 36,
+      "litert_eligio_objetivo": 38,
+      "iou_objetivo_pt": 0.828,
+      "iou_objetivo_litert": 0.868
+    }
+  }
+}

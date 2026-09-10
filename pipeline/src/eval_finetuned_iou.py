@@ -13,6 +13,9 @@ IC95 bootstrap remuestreando ANIMALES (no fotos) para la diferencia contra el pr
     python3 src/eval_finetuned_iou.py                       # preentrenado vs afinado jun-2026
     python3 src/eval_finetuned_iou.py --models pre=models/yolo26n-seg.pt:19 \
         nuevo=runs/segment/runs/seg_finetune_jersey/weights/best.pt:0 --visual
+    # un modelo .tflite se evalúa con la ruta del APK reproducida en PC (core/segmenter_litert.py):
+    python3 src/eval_finetuned_iou.py --conf 0.5 --models pt=models/yolo26n-seg.pt:19 \
+        apk=../app/assets/model_bundle/yolo26n-seg.tflite:19 --visual
 
 Salida en --out: por_imagen.csv, resumen.json, resumen.md y, con --visual, img/{qid}.jpg
 (paneles: manual | modelo 1 | modelo 2 ...) e index.html.
@@ -189,8 +192,15 @@ def main():
         raise SystemExit(f"no existe(n): {missing}")
     names = list(models)
     hashes = {n: sha256_16(models[n][0]) for n in names}
-    segs = {n: CowSegmenter(str(models[n][0]), cow_class_id=models[n][1], min_confidence=args.conf, device=args.device)
-            for n in names}
+    segs = {}
+    for n in names:
+        p, c = models[n]
+        if p.suffix == ".tflite":
+            # ruta del APK reproducida en PC (letterbox + LiteRT + postproceso de segment.ts)
+            from core.segmenter_litert import LiteRTCowSegmenter
+            segs[n] = LiteRTCowSegmenter(str(p), cow_class_id=c, min_confidence=args.conf)
+        else:
+            segs[n] = CowSegmenter(str(p), cow_class_id=c, min_confidence=args.conf, device=args.device)
 
     manifest = list(csv.DictReader(open(val / "manifest.csv")))
     rows = []
