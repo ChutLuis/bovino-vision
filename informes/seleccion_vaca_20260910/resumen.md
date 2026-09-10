@@ -65,18 +65,17 @@ Oráculo (alguna detección con IoU ≥ 0.5 contra la vaca objetivo): 40/40; obj
 4. **"Mayor área" sigue siendo la mejor regla única** (38/40, IoU medio 0.8684) con el protocolo de captura
    de junio. No hay evidencia para cambiarla en el APK ni en RF-07.
 
-## Propuesta (sin desplegar): guardia, no regla nueva
+## Verificación de plausibilidad (evaluada, no desplegada)
 
-Mantener "mayor área" y añadir una **verificación de plausibilidad**: si la caja de la vaca elegida no solapa la
+Complemento posible a "mayor área": si la caja de la vaca elegida no solapa la
 columna vertical del marcador (franja k = 0), la aplicación avisa "hay varias vacas; confirme que la resaltada es
 la del arete" en vez de cambiar la elección en silencio. Sobre las 40 manuales la guardia se dispararía en
 6 fotos: 2 verdaderas (burst_nahomi_01, burst_nahomi_02) y 4 falsas alarmas (burst_ambar_01, burst_ambar_02, burst_ambar_03, burst_estrellita_01), todas estas
 con el marcador en un poste o lejos del costado. Con el protocolo de la campaña de calibración (marcador en
 contacto con el costado del animal, Fase 6 de la tesis) la falsa alarma debería desaparecer y la guardia se
-vuelve exacta; conviene medirlo sobre las fotos de septiembre antes de tocar `segment.ts`.
+vuelve exacta. Se evaluará con las fotos de la campaña de septiembre.
 
-Coste en la app: un solape de cajas por foto (ya se tienen la caja de la vaca y las esquinas del marcador en
-`estimarPeso.ts`); no cambia el modelo ni el postproceso.
+Coste: un solape de cajas por foto; no cambia el modelo ni el postproceso.
 
 ## Reproducir
 

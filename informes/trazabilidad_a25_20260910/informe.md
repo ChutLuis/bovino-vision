@@ -91,10 +91,8 @@ CSV exportado desde Historial → "Compartir historial (CSV)" (`wakx-historial.c
 
    Con el marcador 1.7× más cerca que el animal el área en cm² se divide por ≈ 3 y el peso cae. El pipeline en PC da
    lo mismo que la app, así que no es defecto del APK sino del protocolo de captura de junio (marcador en poste o
-   pared). Consecuencias: el protocolo de la campaña de calibración lleva el marcador al costado del animal
-   (`docs/02_protocolo_campo.md`), y la guardia de selección propuesta en `informes/seleccion_vaca_20260910/` se
-   reformula como verificación de plausibilidad de escala (marcador solapando la vaca elegida y área en unidades de
-   marcador dentro de una banda: Camelia ≈ 67 marcador², Taty ≈ 23), a medir con las fotos de septiembre.
+   pared). Por eso el protocolo de la campaña de calibración lleva el marcador al costado del animal
+   (`docs/02_protocolo_campo.md`).
 
 ## Archivos
 
