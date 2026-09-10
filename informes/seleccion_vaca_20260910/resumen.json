@@ -1,0 +1,190 @@
+{
+  "fecha": "2026-09-10",
+  "tflite": "app/assets/model_bundle/yolo26n-seg.tflite",
+  "conf": 0.5,
+  "n_imagenes": 40,
+  "oraculo_alguna_deteccion_recupera_objetivo": "40/40",
+  "objetivo_no_detectado": [],
+  "con_marcador": 39,
+  "marcador_id0": 39,
+  "con_mas_de_una_deteccion": 23,
+  "sin_deteccion": 0,
+  "reglas": {
+    "area": {
+      "eligio_objetivo": "38/40",
+      "iou_objetivo_medio": 0.8684,
+      "cambia_vs_area": [],
+      "mejora_vs_area": [],
+      "empeora_vs_area": [],
+      "ok_por_estrato": {
+        "facil": 15,
+        "media": 13,
+        "dificil": 10
+      }
+    },
+    "marcador_dist": {
+      "eligio_objetivo": "28/40",
+      "iou_objetivo_medio": 0.6445,
+      "cambia_vs_area": [
+        "5_06_odra",
+        "5_06_karina",
+        "burst_ambar_01",
+        "burst_ambar_02",
+        "burst_ambar_03",
+        "burst_estrellita_01",
+        "burst_estrellita_02",
+        "burst_taty_02",
+        "burst_nahomi_01",
+        "burst_nahomi_02",
+        "12_06_lubianca",
+        "12_06_zafiro"
+      ],
+      "mejora_vs_area": [],
+      "empeora_vs_area": [
+        "5_06_odra",
+        "5_06_karina",
+        "burst_ambar_01",
+        "burst_ambar_02",
+        "burst_ambar_03",
+        "burst_estrellita_01",
+        "burst_estrellita_02",
+        "burst_taty_02",
+        "12_06_lubianca",
+        "12_06_zafiro"
+      ],
+      "ok_por_estrato": {
+        "facil": 13,
+        "media": 7,
+        "dificil": 8
+      }
+    },
+    "centro_x": {
+      "eligio_objetivo": "26/40",
+      "iou_objetivo_medio": 0.5982,
+      "cambia_vs_area": [
+        "5_06_odra",
+        "5_06_cristy",
+        "5_06_zafiro",
+        "5_06_karina",
+        "burst_ambar_01",
+        "burst_ambar_02",
+        "burst_ambar_03",
+        "burst_estrellita_01",
+        "burst_estrellita_02",
+        "burst_taty_02",
+        "burst_nahomi_01",
+        "burst_nahomi_02",
+        "12_06_lubianca",
+        "12_06_zafiro"
+      ],
+      "mejora_vs_area": [],
+      "empeora_vs_area": [
+        "5_06_odra",
+        "5_06_cristy",
+        "5_06_zafiro",
+        "5_06_karina",
+        "burst_ambar_01",
+        "burst_ambar_02",
+        "burst_ambar_03",
+        "burst_estrellita_01",
+        "burst_estrellita_02",
+        "burst_taty_02",
+        "12_06_lubianca",
+        "12_06_zafiro"
+      ],
+      "ok_por_estrato": {
+        "facil": 11,
+        "media": 7,
+        "dificil": 8
+      }
+    },
+    "franja_0": {
+      "eligio_objetivo": "34/40",
+      "iou_objetivo_medio": 0.7823,
+      "cambia_vs_area": [
+        "burst_ambar_01",
+        "burst_ambar_02",
+        "burst_ambar_03",
+        "burst_estrellita_01",
+        "burst_nahomi_01",
+        "burst_nahomi_02"
+      ],
+      "mejora_vs_area": [],
+      "empeora_vs_area": [
+        "burst_ambar_01",
+        "burst_ambar_02",
+        "burst_ambar_03",
+        "burst_estrellita_01"
+      ],
+      "ok_por_estrato": {
+        "facil": 15,
+        "media": 9,
+        "dificil": 10
+      }
+    },
+    "franja_1": {
+      "eligio_objetivo": "29/40",
+      "iou_objetivo_medio": 0.6666,
+      "cambia_vs_area": [
+        "5_06_odra",
+        "5_06_karina",
+        "burst_ambar_01",
+        "burst_ambar_02",
+        "burst_ambar_03",
+        "burst_estrellita_01",
+        "burst_estrellita_02",
+        "burst_nahomi_01",
+        "burst_nahomi_02",
+        "12_06_lubianca",
+        "12_06_zafiro"
+      ],
+      "mejora_vs_area": [],
+      "empeora_vs_area": [
+        "5_06_odra",
+        "5_06_karina",
+        "burst_ambar_01",
+        "burst_ambar_02",
+        "burst_ambar_03",
+        "burst_estrellita_01",
+        "burst_estrellita_02",
+        "12_06_lubianca",
+        "12_06_zafiro"
+      ],
+      "ok_por_estrato": {
+        "facil": 13,
+        "media": 8,
+        "dificil": 8
+      }
+    },
+    "franja_2": {
+      "eligio_objetivo": "31/40",
+      "iou_objetivo_medio": 0.7138,
+      "cambia_vs_area": [
+        "5_06_odra",
+        "5_06_karina",
+        "burst_ambar_01",
+        "burst_ambar_02",
+        "burst_ambar_03",
+        "burst_estrellita_01",
+        "burst_estrellita_02",
+        "burst_nahomi_01",
+        "burst_nahomi_02"
+      ],
+      "mejora_vs_area": [],
+      "empeora_vs_area": [
+        "5_06_odra",
+        "5_06_karina",
+        "burst_ambar_01",
+        "burst_ambar_02",
+        "burst_ambar_03",
+        "burst_estrellita_01",
+        "burst_estrellita_02"
+      ],
+      "ok_por_estrato": {
+        "facil": 13,
+        "media": 8,
+        "dificil": 10
+      }
+    }
+  }
+}
