@@ -1,4 +1,4 @@
-# Fine-tuning de YOLO26-seg — estado al 9 de septiembre de 2026
+# Fine-tuning de YOLO26-seg
 
 Objetivo original (Cap. 3): especializar el segmentador en las vacas Jersey de la finca con transfer
 learning, split por animal y aumento de datos. Independiente del modelo de peso (no lo cambia).
@@ -73,16 +73,6 @@ objetivo (límite inferior del IC95 de la diferencia > −0.02), cero fotos fác
 después la Fase E: paridad de área PC↔APK ≤ 1 % y reajuste de los coeficientes a, b del modelo de
 peso, porque se ajustaron con áreas del preentrenado (que sobre-segmenta +4.3 % frente a la
 anotación manual en las laterales controladas).
-
-## Qué cambió respecto a la versión anterior de este documento
-
-- Ya no hay "790 máscaras tuyas": las máscaras de ráfaga son salida de YOLO; las manuales son las 40 de val.
-- El split ya no es 614/176 con 6 animales held-out: es 352/40 con 24 animales held-out (más IRIS por arete).
-- La ruta de pesos `runs/seg_finetune/jersey/` no existe: Ultralytics 8.4 escribe en `runs/segment/runs/<name>/`.
-- `eval_finetuned_iou.py` se reescribió: antes leía el label completo como una sola línea y reventaba con
-  etiquetas multi-instancia; ahora usa los PNG, empareja instancias y reporta IC por animal.
-- El caveat "sin GT manual no afirmes nada" quedó resuelto por `annotate_val.py`; la afirmación que
-  habilita es la de arriba.
 
 ## Historial
 
