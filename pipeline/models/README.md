@@ -10,6 +10,11 @@
 | `yolo26n.pt` | YOLO26n de detección (cajas) para `capture.py` / `detect_live.py`. | Ultralytics | — |
 | `weight_model.joblib` | RandomForest de peso, serializado con scikit-learn 1.8.0. Carga con avisos en 1.9. El APK no lo usa (usa `weight_model.json`, alométrico). | `train_weight_model.py`, 2026-06-09 | — |
 
+El APK lleva además `app/assets/model_bundle/model_manifest.json` (sha256 del `.tflite` y de su cuerpo, `.pt` de origen y su
+sha256, versiones de Ultralytics, `class_id` 19 = cow, 80 nombres, fecha de exportación). Lo genera
+`src/make_model_manifest.py`; `config.ts` lee `class_id` de ahí y `estimarPeso.ts` guarda `peso:<versión>;seg:<sha256[0:16]>`
+en `version_modelo` de cada estimación. `tests/test_export_contract.py` falla si el manifiesto no coincide con el archivo.
+
 Reglas:
 - `finetune_segmenter.py` escribe `finetuned_<AAAAMMDD>_<sha8>.pt` y nunca sobrescribe.
 - Cualquier modelo que entre al APK debe pasar `tests/test_export_contract.py` y la paridad de área PC↔APK (≤1 %).

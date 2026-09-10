@@ -5,11 +5,14 @@ import { detectAruco } from '../vision/aruco';
 import { asArrayBuffer, decodeJpegUri, letterboxToNchw, normalizeExifOrientation } from '../vision/image';
 import { calcularAreaCm2 } from '../vision/morphometry';
 import { measureSegmentation } from '../vision/segment';
+import { componerVersionModelo, type ManifiestoSegmentador } from '../vision/modelManifest';
 import type { EtapaProcesamiento, FotoEntrada, ResultadoEstimacion } from './types';
 
 export interface DependenciasEstimacion {
   modelo_segmentacion: TfliteModel;
   modelo_peso: ModeloPeso;
+  // Ficha del .tflite cargado; por defecto la del bundle. Inyectable para pruebas.
+  manifiesto_segmentador?: ManifiestoSegmentador;
   notificar_etapa?: (etapa: EtapaProcesamiento) => void | Promise<void>;
 }
 
@@ -87,7 +90,10 @@ export async function estimarPeso(
     },
     overlay_mascara: resultadoSegmentacion.overlay_mascara,
     esquinas_marcador: marcador.corners,
-    version_modelo: dependencias.modelo_peso.version,
+    version_modelo: componerVersionModelo(
+      dependencias.modelo_peso.version,
+      dependencias.manifiesto_segmentador,
+    ),
     cm_per_px: marcador.cm_per_px,
     confianza_vaca: segmentacion.selected_confidence,
     intervalo_modelo: peso.intervalo,

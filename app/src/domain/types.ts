@@ -29,6 +29,7 @@ export interface EstimacionExitosa {
   mascara: MascaraDisponible;
   overlay_mascara: MascaraVisual | null;
   esquinas_marcador: Point[];
+  // "peso:<version del bundle de peso>;seg:<sha256[0:16] del .tflite>" (ver vision/modelManifest.ts).
   version_modelo: string;
   cm_per_px: number;
   confianza_vaca: number;
