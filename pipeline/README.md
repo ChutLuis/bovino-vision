@@ -1,81 +1,59 @@
-# Pipeline (PC) — Estimación de peso bovino
+# Pipeline (PC)
 
-Pipeline de investigación de la tesis (corre en PC): captura, anotación, segmentación, morfometría, modelo de peso, evaluaciones y exportación del modelo que consume el APK. Aquí ocurre todo el entrenamiento y la validación; el teléfono solo ejecuta artefactos congelados.
-
-## Hardware objetivo
-- NVIDIA Jetson Orin Nano (despliegue en finca)
-- Cámara USB (Logitech C270 HD recomendada)
-- Marcadores ArUco DICT_6X6_250 impresos en PVC sintra de 12-15 cm
-
-Durante desarrollo en macOS se usa la cámara integrada (FaceTime HD); la API de OpenCV es portable.
+Código Python de la tesis: anotación, segmentación, morfometría, modelo de peso, evaluaciones y exportación del
+modelo que consume la app. Todo el entrenamiento y la validación ocurren aquí; el teléfono solo ejecuta artefactos
+congelados (`app/assets/model_bundle/`).
 
 ## Instalación
 
 ```bash
 cd pipeline
-python3 -m pip install -r requirements.txt
-# Versiones exactas con las que se validó el pipeline en PC (CPU): ver cabecera del archivo
-python3 -m pip install -r requirements-lock.txt
-python3 -m pytest -q          # pruebas (tests/)
+python3 -m venv .venv
+.venv/bin/pip install -r requirements-lock.txt   # versiones exactas con las que se validó (Python 3.12, CPU)
+.venv/bin/python -m pytest -q                     # tests/; el smoke test E2E con cámara se corre a mano (pytest.ini)
 ```
 
-## Uso
+`requirements.txt` conserva rangos amplios compatibles con la Jetson; `requirements-lock.txt` fija lo que se usó para
+exportar el `.tflite`, emular la ruta del APK en PC y evaluar IoU y paridad.
 
-**1. Generar marcadores para imprimir:**
-```bash
-python3 src/generate_markers.py --ids 0-49 --size-cm 15 --out data/markers/markers.pdf
-```
+## Scripts por propósito (`src/`)
 
-**2. Visor en vivo (para calibrar cámara, validar detección):**
-```bash
-python3 src/detect_live.py
-```
-Presiona `q` para salir.
-
-**3. Captura autónoma (pipeline real):**
-```bash
-python3 src/capture.py --config config.yaml
-```
-
-## Estructura
-
-```
-pipeline/
-├── config.yaml              # parámetros de captura
-├── FINETUNING.md            # segmentador: split por animal, evaluación manual, veredicto
-├── JETSON_SETUP.md          # guía de la Jetson (plataforma de validación del prototipo)
-├── pytest.ini
-├── src/
-│   ├── core/                # aruco, calibration, segmenter (.pt), segmenter_litert (ruta del APK en PC), morphometry, seg_eval, ...
-│   ├── capture.py, detect_live.py, generate_markers.py
-│   ├── annotate_val.py      # anotación manual del conjunto de validación (MobileSAM + pincel)
-│   ├── build_yolo_seg_dataset.py   # dataset YOLO-seg, split por animal sin fuga (--dry-run)
-│   ├── finetune_segmenter.py       # entrenamiento (no sobrescribe pesos)
-│   ├── eval_finetuned_iou.py       # IoU contra máscaras manuales, IC por animal, paneles (.pt o .tflite)
-│   ├── eval_segmenter_parity.py    # .pt vs LiteRT-PC vs Galaxy A25 (paridad de área y decisión)
-│   ├── measure_*.py, eval_weight_*.py, train_weight_model.py   # morfometría y modelo de peso
-│   └── eval_aruco_parity.py        # paridad de escala móvil vs OpenCV
-├── tests/                   # pytest: parseo de etiquetas, split, manifiesto, contrato LiteRT, emulador vs A25
-├── data/
-│   ├── field/               # datos de campo (ver data/field/README_DATASETS.md)
-│   ├── field/seg_dataset/   # generado, gitignored
-│   └── val_clean/           # 40 imágenes de validación anotadas a mano + manifest.csv
-├── models/                  # pesos (gitignored); models/README.md lista procedencia y sha256
-└── runs/                    # salidas de Ultralytics (gitignored)
-```
-
-Los crudos de campo (ráfagas `_grouped/`) viven fuera del repo en `Thesis_final_raw/` con `MANIFEST.sha1`;
-los scripts los toman de `--raw`, `$BOVINO_RAW_GROUPED` o `~/Documents/Thesis_final_raw/raw/_grouped`.
-
-## Estado actual
-
-| Verificado en macOS | Por validar en Jetson |
+| Propósito | Scripts |
 |---|---|
-| YOLO26n carga, detecta vaca conf 0.78-0.95 | PyTorch CUDA en ARM (ruedas NVIDIA) |
-| ArUco roundtrip (gen → detect ID OK) | C270 USB index correcto |
-| Smoke test E2E pasa | `cv2.imshow` con GUI de JetPack |
-| Segmentador desplegado = YOLO26n-seg preentrenado (cls 19), LiteRT FP32 sha256 `14b35a7b…`, exportación reproducible (`tests/test_export_contract.py`) | — |
-| Fine-tuning evaluado contra 40 máscaras manuales: empeora (ver FINETUNING.md) | — |
-| Trigger/cooldown/storage | TensorRT FP16 export |
+| Datos de campo | `group_by_burst.py` (ráfagas por vaca), `triage_photos.py`, `build_master_logbook.py`, `extract_features.py`, `build_dataset.py` |
+| Anotación de máscaras | `annotate_val.py` (MobileSAM + pincel; conjunto de validación), `build_val_clean.py`, `draw_mask.py`, `annotate_sam.py`, `select_cow.py`, `review_masks.py`, `auto_mask.py` (máscaras automáticas de las ráfagas), `compare_mask_sets.py` |
+| Segmentador | `build_yolo_seg_dataset.py` (dataset YOLO-seg con split por animal; `--dry-run` no escribe), `finetune_segmenter.py`, `eval_finetuned_iou.py` (IoU contra las máscaras manuales, IC por animal), `eval_segmenter_parity.py` (`.pt` vs LiteRT en PC vs Galaxy A25), `eval_cow_selection.py` (regla con varias vacas), `make_model_manifest.py` (ficha del `.tflite` para la app) |
+| Escala ArUco | `generate_markers.py`, `validate_scale.py`, `eval_aruco_parity.py` (js-aruco2 vs OpenCV) |
+| Modelo de peso | `measure_fotos_hoy.py`, `measure_grouped_masks.py`, `eval_weight_fotos_hoy.py` (leave-one-out, IC bootstrap), `eval_compare_datasets.py`, `train_weight_model.py` |
+| Captura autónoma (prototipo Jetson) | `capture.py`, `detect_live.py`, `analyze_batch.py`, `benchmark_jetson.py`, `config.yaml` |
+| Jornada de campo | `generate_field_guide.py` (guía imprimible) |
 
-Ver **JETSON_SETUP.md** para el plan de deploy y troubleshooting.
+`src/core/`: `aruco.py`, `calibration.py`, `cow_detector.py`, `segmenter.py` (Ultralytics `.pt`),
+`segmenter_litert.py` (reproduce en Python la ruta del APK: letterbox 640×640, LiteRT, postproceso de la máscara),
+`morphometry.py`, `seg_eval.py`, `trigger.py`, `storage.py`.
+
+## Pruebas (`tests/`)
+
+`pytest -q` cubre el parseo de etiquetas y las métricas (`test_seg_eval.py`), el split sin fuga
+(`test_split_integrity.py`), el manifiesto del conjunto de validación (`test_val_manifest.py`), el contrato del
+`.tflite` con su manifiesto (`test_export_contract.py`), el recorte del relleno del letterbox
+(`test_segmenter_padding.py`), la emulación LiteRT (`test_segmenter_litert.py`) y su paridad con lo medido en el A25
+(`test_parity_a25.py`, sobre `informes/benchmark_a25_20260826_fullres.json`), además de la morfometría
+(`test_morphometry_smoke.py`). `test_pipeline_smoke.py` es un E2E con cámara y se corre a mano.
+
+## Datos y modelos
+
+- `data/field/`: fotos curadas de junio de 2026, pesos y morfometría (`data/field/README_DATASETS.md`).
+- `data/val_clean/`: 40 imágenes de validación anotadas a mano, con `manifest.csv`.
+- `data/field/seg_dataset/`: lo genera el builder; no se versiona.
+- Crudos (ráfagas `_grouped/`): fuera del repositorio, en `~/Documents/Thesis_final_raw/` con `MANIFEST.sha1`; los
+  scripts los toman de `--raw`, `$BOVINO_RAW_GROUPED` o esa ruta.
+- `models/`: pesos no versionados; `models/README.md` lista procedencia y sha256. El segmentador desplegado es el
+  YOLO26n-seg preentrenado en COCO exportado a LiteRT FP32 (sha256 `14b35a7b…`); el fine-tuning se evaluó contra las
+  máscaras manuales y se descartó (`FINETUNING.md`).
+
+## Jetson Orin Nano
+
+Fue la plataforma del prototipo de captura autónoma (mayo de 2026): `capture.py` detecta marcador y vaca con la
+cámara USB y guarda ráfagas. El producto final es la app; la Jetson queda como línea futura de estación de corral.
+`JETSON_SETUP.md` documenta el entorno (PyTorch de NVIDIA, cuSPARSELt, numpy 1.x, torchvision desde fuente).
