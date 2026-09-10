@@ -1,89 +1,29 @@
-# UI/UX del APK — Definición v1 y brief de diseño
-**Correcciones atendidas: #2 (producto final), #6 (producto funcional)**
-Estado: v0.2 — alcance mínimo acordado.
-**Nombre decidido (27 ago 2026): Wakx** — "vaca" en kaqchikel, subtítulo
-"Estimación de peso bovino". Corto, pronunciable, con identidad guatemalteca
-coherente con el usuario objetivo del proyecto.
+# Interfaz de la aplicación
 
-## Alcance v1 (decidido 26 ago 2026)
-- SIN feedback en vivo durante la cámara (frame processors quedan para v1.1).
-- Flujo: captura → procesando (~2 s) → resultado con overlay → guardar.
-- Historial mínimo: lista de estimaciones por animal. Gráfica de tendencia: v1.1.
+Wakx ("vaca" en kaqchikel), subtítulo "Estimación de peso bovino". Usuario: pequeño productor rural que usa la app al
+aire libre, bajo sol directo, con una mano y sin vocabulario técnico.
 
-## Contexto de uso (restricciones de diseño NO negociables)
-1. **Sol directo de campo**: contraste alto, texto grande, nada de grises sutiles.
-2. **Una sola mano**: acciones principales alcanzables con el pulgar, botones ≥ 56 px.
-3. **Usuario no técnico**: el ganadero "pesa", no "infiere". Cero jerga
-   (nunca "segmentación", "confianza del modelo", "inferencia").
-4. **Offline siempre**: ningún estado de UI puede depender de red; no mostrar
-   spinners de "conectando".
-5. **Manos ocupadas/sucias**: flujo completo foto→peso en ≤ 3 toques (RNF-07).
+## Restricciones de diseño
 
-## Pantallas y estados
+1. Sol directo: contraste alto, texto grande, nada de grises sutiles.
+2. Una mano: acciones principales al alcance del pulgar, botones de al menos 56 px.
+3. Sin jerga: el ganadero "pesa"; nunca "segmentación", "confianza" ni "inferencia". El marcador ArUco se llama "cuadro".
+4. Sin red: ningún estado de la interfaz depende de conectividad.
+5. Foto → peso en pocos toques (RNF-07).
 
-### P1 — Captura
-- Cámara a pantalla completa, lente principal 1x fijo.
-- Guía visual estática (silueta punteada de vaca lateral + esquina donde suele
-  quedar el marcador) — ayuda de encuadre, no detección en vivo.
-- Botón único grande: disparador.
+## Pantallas
 
-### P2 — Procesando (~2 s)
-- La foto tomada de fondo + indicador de progreso con mensajes por etapa
-  ("Buscando al animal…", "Leyendo el marcador…", "Calculando peso…").
-- Corresponde al pipeline real: segmentación (0.45 s) → ArUco (1.4 s) → peso.
+| Pantalla | Qué hace |
+|---|---|
+| Arranque (`SplashScreen`) | Carga el modelo una sola vez (3.97 s en frío en el A25) antes de habilitar la captura. La primera vez muestra `OnboardingScreen`: cuatro tarjetas ("Pese con una foto.", "El cuadro es la regla.", "De lado y entera.", "Listo para pesar.") y la lista de requisitos de la foto; la guía se puede reabrir desde la captura. |
+| Captura (`CapturaScreen`) | Tomar la foto o elegirla de la galería; foto de ejemplo del encuadre; acceso al historial. |
+| Procesando (`ProcesandoScreen`) | Etapas sobre la foto ("Animal encontrado", "Leyendo el cuadro…", "Calculando el peso") legibles al sol, con cancelación explícita. |
+| Resultado (`ResultadoScreen`) | Peso en grande, silueta pintada sobre la foto y recuadro del cuadro; campo de arete de seis dígitos con aviso si el animal ya está en el historial; guardar o repetir la foto. Si la foto no sirve: la causa en lenguaje de corral (no se ve la vaca completa, no se ve el cuadro, el cuadro se ve borroso o de lado), qué hacer, y un solo botón para volver a tomar. |
+| Historial (`HistorialScreen`) | Animales por arete con búsqueda; detalle con las pesadas, la diferencia contra la anterior y la tendencia; borrado por deslizamiento; compartir el historial en CSV. |
 
-### P3a — Resultado (éxito) — LA pantalla de la demo
-- Foto con **máscara de silueta superpuesta** (verde translúcido) y **marcador
-  ArUco resaltado** (recuadro).
-- Peso en tipografía gigante: **"375 kg"** + intervalo pequeño debajo ("± 24 kg").
-- Acciones: [Guardar en historial] (elige/crea animal por arete) · [Repetir foto].
+## Contrato con el pipeline
 
-### P3b — Resultado (rechazo con causa, RF-07)
-Mensajes en lenguaje de corral, cada uno con acción correctiva:
-- Sin vaca detectada → "No se ve la vaca completa. Aléjese un poco y tome la
-  foto de lado."
-- Sin marcador → "No se ve el cuadro de referencia. Revise que esté visible y
-  limpio."
-- Marcador ilegible/inclinado → "El cuadro de referencia se ve borroso o de
-  lado. Póngalo derecho, junto al costado de la vaca."
-- Botón único: [Volver a tomar].
-
-### P4 — Historial (v1 mínimo)
-- Lista de animales (arete + nombre opcional); al tocar: estimaciones con fecha
-  y peso. Botón exportar CSV (share intent).
-
-### P0 — Arranque
-- Splash con logo mientras se precarga el modelo (mitiga cold start 3.97 s).
-- Regla: el modelo se carga UNA vez al abrir, nunca al tomar la foto.
-
-## Brief para herramienta de diseño (copiar/pegar)
-
-> Diseña una app Android para ganaderos guatemaltecos que estima el peso de una
-> vaca a partir de una foto. Usuario: pequeño productor rural, poca familiaridad
-> tecnológica, usa la app al aire libre bajo sol directo, con una sola mano.
-> Estilo: cálido y confiable, no corporativo ni "startup"; alto contraste,
-> tipografía grande, botones enormes; español sencillo de campo. 5 pantallas:
-> (1) cámara con guía de encuadre punteada y un solo botón de disparo;
-> (2) procesando con mensajes por etapa sobre la foto;
-> (3) resultado: la foto con la silueta de la vaca pintada en verde translúcido,
-> un recuadro sobre el marcador de referencia, y el peso enorme ("375 kg ± 24");
-> botones Guardar y Repetir;
-> (4) rechazo: mensaje claro de qué salió mal y cómo corregirlo, botón Volver a
-> tomar; (5) historial: lista simple de animales y sus pesos con fechas.
-> Paleta sugerida: verdes de campo + tierra, acentos de alta visibilidad.
-> El nombre de la app es "Wakx" ("vaca" en kaqchikel) con subtítulo "Estimación
-> de peso bovino". El logo/ícono puede jugar con la silueta lateral de una vaca
-> y/o el patrón cuadrado del marcador ArUco.
-
-## Contrato de artefactos congelados (pipeline → APK)
-El APK consume un paquete versionado generado por `pipeline/`:
-```
-model_bundle/
-├── yolo26n-seg.tflite     # LiteRT FP32 (12 MB), validado por paridad
-├── weight_model.json      # { "a": 0.375, "b": 0.706, "interval": {...},
-│                          #   "version": "2026-08-26", "fuente": "n=34 lateral" }
-└── golden_cases.json      # casos foto→peso esperado (test de correctitud)
-```
-Regla: a y b NUNCA se escriben en el código de la app — siempre se leen del
-bundle. Al re-ajustar con los datos de campo de sep 2026, solo cambia el bundle
-y su versión (cada estimación guarda `versión_modelo` en SQLite).
+La app consume `app/assets/model_bundle/`: `yolo26n-seg.tflite`, `model_manifest.json`, `weight_model.json`
+(`a`, `b`, `interval`, `version`; hoy `interval = null`, por eso el resultado no muestra intervalo) y `golden_cases.json`.
+Los coeficientes nunca se escriben en el código: al reajustar el modelo con la campaña de calibración cambia solo el
+paquete y su versión, y cada estimación guarda con qué versión se calculó (`docs/03_arquitectura_apk.md`).
