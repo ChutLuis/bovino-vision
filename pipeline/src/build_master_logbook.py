@@ -53,8 +53,8 @@ w_no_photo = [r for r in out if r["tiene_fotos"] == "NO"]
 photo_no_weight = sorted(folder_aretes - weight_aretes)
 
 print(f"Total en lista de pesos: {len(out)} (kg {min(r['peso_kg'] for r in out)}-{max(r['peso_kg'] for r in out)})")
-print(f"\n✅ USABLES (foto + peso, sin conflicto): {len(usable)}")
-print(f"⚠️  Aretes DUPLICADOS (resolver): {sorted(dups)}")
-print(f"❌ Peso SIN fotos: {[(r['arete'], r['nombre']) for r in w_no_photo]}")
-print(f"❓ Fotos SIN peso (carpetas sin match): {photo_no_weight}")
+print(f"\nUsables (foto + peso, sin conflicto): {len(usable)}")
+print(f"Aretes duplicados (resolver): {sorted(dups)}")
+print(f"Peso sin fotos: {[(r['arete'], r['nombre']) for r in w_no_photo]}")
+print(f"Fotos sin peso (carpetas sin match): {photo_no_weight}")
 print(f"\nmaster -> {master}")
