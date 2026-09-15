@@ -38,7 +38,7 @@ pesaje rentado (≈ Q2,000).
 | RNF-02 | Tiempo de inferencia aceptable en gama media | ≤ 3 s por foto — **medido en Galaxy A25: ~2.0 s** (segmentación 0.45 s + ArUco full-res 1.4 s + postproceso 0.15 s); cold start 3.97 s mitigado con precarga al abrir la app |
 | RNF-03 | Precisión heredada del modelo validado | MAPE < 10 % en condiciones del protocolo de captura (umbral H1a). Piloto: 7.71 %, IC95 [6.2, 9.2], n = 34. La ruta del APK reproduce las áreas del pipeline con diferencia ≤ 1 % (`informes/paridad_segmentador_20260909/`) |
 | RNF-04 | Tamaño de la app razonable para descarga rural | APK ≤ 80 MB (modelo YOLO26n-seg LiteRT FP32: 12 MB medidos) |
-| RNF-05 | Compatibilidad | Android 10+ (API 29), sin requerir GPU dedicada |
+| RNF-05 | Compatibilidad | Android 7.0+ (API 24), sin requerir GPU dedicada |
 | RNF-06 | Privacidad de datos | Todos los datos permanecen en el dispositivo del productor |
 | RNF-07 | Usabilidad rural | Flujo foto→peso en ≤ 3 toques; textos en español; iconografía clara |
 

@@ -120,4 +120,4 @@ de referencia; el `.pt` es su aproximación en PC.
 | RNF-02 ≤ 3 s por foto | ≈ 2.0 s (segmentación 0.45 s + marcador 1.4 s + postproceso) |
 | RNF-04 APK razonable | Modelo 12 MB |
 | RNF-06 privacidad | Datos en SQLite y directorio privado; salen solo por CSV compartido |
-| Compatibilidad | `minSdkVersion` no fijado: rige el valor por defecto de la plantilla de Expo 57 |
+| Compatibilidad | `minSdkVersion` 24, valor por defecto de la plantilla de Expo 57 que declara el APK release (`sdkVersion:'24'`) |
