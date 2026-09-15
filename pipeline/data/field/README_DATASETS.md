@@ -37,3 +37,19 @@ python3 src/measure_grouped_masks.py --masks-root ~/Documents/Thesis_final_raw/m
 python3 src/eval_compare_datasets.py      # comparación fotos_hoy vs ráfagas vs combinado
 python3 src/eval_finetuned_iou.py --visual # IoU de segmentadores contra val_clean -> informes/iou_val_manual_<fecha>/
 ```
+
+## Campaña de calibración (12 sep 2026) → `campana_20260912/`
+- Crudos fuera del repositorio: `~/Documents/Thesis_photos_12_09/` (1226 JPG con `MANIFEST.sha1`: 1202 Xiaomi 15 Ultra, 24 Galaxy A25); se pasan con `--fotos` o `$BOVINO_CAMPANA_RAW`. Agrupación por animal y tabla transcrita en `~/Documents/Thesis_photos_12_09_grupos/` (entrada de `build_campana_csvs.py`).
+- `bitacora_campana_20260912.csv`: 40 animales (`fila,nombre,arete,categoria,peso_lb1,peso_lb2,peso_kg,telefono,notas`). `arete` es texto con ceros a la izquierda. Los pesos de referencia y la categoría se completan con el pesaje de la finca; hasta entonces `eval_weight_campana.py` termina con código 2.
+- `fotos_por_vaca.csv`: 1198 fotografías → animal (1174 Xiaomi, 24 A25; sin las 27 fotografías de la tabla ni la fotografía suelta).
+- `features_campana_20260912.csv`: una fila por fotografía. Marcador (media de los cuatro lados, `px_per_cm`), distancia estimada `d = f_px·0.15/marker_px` con `f_px = W·f35/36` (EXIF), nivel nominal 2.5/3.0/3.5 m, morfometría de `core/`, `lateral_area_cm2_corr = A·((d+0.50)/d)²` (corrección de paralaje, Δ = 0.50 m), `seleccionada_3m` (las cinco fotografías por animal con marcador y silueta más cercanas a 3.0 m) y `estado` (`ok`, `sin_marcador`, `sin_vaca`, `silueta_cortada`). El rango de plausibilidad de longitud del piloto (110–190 cm) no se aplica; `informes/campana_20260912/resumen.md` da los percentiles de la campaña.
+- Informe sin pesos: `../../informes/campana_20260912/` (decodificación, repetibilidad, robustez a la distancia y elección de Δ).
+
+```bash
+cd pipeline
+python3 src/build_campana_csvs.py                       # bitácora + fotos_por_vaca desde la agrupación auditada
+python3 src/measure_campana.py                          # medidas por fotografía (≈ 15 min de CPU) + overlays QA fuera del repo
+python3 src/report_campana.py --fotos ~/Documents/Thesis_photos_12_09   # informes/campana_20260912/
+python3 src/eval_weight_campana.py                      # con pesos en la bitácora: LOO, IC95, IP, AIC, pliegue por distancia
+python3 src/make_weight_bundle.py --metricas ../informes/campana_20260912/metricas.json --out weight_model.json
+```
