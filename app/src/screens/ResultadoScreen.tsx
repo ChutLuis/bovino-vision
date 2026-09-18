@@ -36,7 +36,7 @@ const TITULOS_RECHAZO: Record<CausaRechazo, string> = {
   marcador_ilegible: 'El cuadro no se puede leer',
 };
 
-// One paragraph only: the title says what is wrong, this says what to do (handoff X3).
+// One paragraph only: the title says what is wrong, this says what to do.
 const CONSEJOS_RECHAZO: Record<CausaRechazo, string> = {
   sin_vaca:
     'Camine unos pasos hacia atrás. La vaca debe caber entera en la pantalla, de la cabeza a la cola.',
@@ -46,7 +46,7 @@ const CONSEJOS_RECHAZO: Record<CausaRechazo, string> = {
     'Enderece el cuadro para que mire hacia la cámara y sostenga el teléfono firme al disparar.',
 };
 
-// What the dotted square marks: where the cuadro should have been (handoff X2).
+// What the dotted square marks: where the cuadro should have been.
 const ETIQUETAS_ZONA: Record<CausaRechazo, string> = {
   sin_vaca: 'Aquí falta la vaca completa',
   sin_marcador: 'Aquí falta el cuadro',
@@ -75,7 +75,7 @@ interface PuntoMostrado {
 const GROSOR_ARISTA_MARCADOR = 3;
 
 // The margin describes the method, never this animal: deriving it from the
-// weight made a fixed error look like a per-photo measurement (handoff R2).
+// weight made a fixed error look like a per-photo measurement.
 const MARGEN_HABITUAL_KG = 13;
 
 function margenHabitualKg(intervalo: unknown): number {
@@ -202,7 +202,7 @@ function Rechazo({ insets, resultado, onElegirGaleria, onVolverATomar }: Rechazo
 }
 
 // Beside the animal when it was detected, left of centre otherwise; always clear of
-// the bottom panel (handoff X2).
+// the bottom panel.
 function posicionZonaRechazo(
   caja: RectanguloMostrado | null,
   contenedor: Tamano,
@@ -897,7 +897,7 @@ function mapearRectangulo(
   };
 }
 
-// R1 made the inline photo `cover`, so the overlay geometry has to follow the same
+// The inline photo is `cover`, so the overlay geometry has to follow the same
 // scale the image uses; the fullscreen modal is still `contain`.
 function calcularAjuste(original: Tamano, mostrado: Tamano, modo: ModoAjuste) {
   const escalaHorizontal = mostrado.width / original.width;
@@ -921,7 +921,7 @@ function calcularPosicionEtiquetaMarcador(
   cajaMascara: RectanguloMostrado | null,
   contenedor: Tamano,
 ): Pick<RectanguloMostrado, 'left' | 'top'> {
-  // Kept in step with styles.etiquetaMarcador, which R1 grew to 14 px.
+  // Kept in step with styles.etiquetaMarcador, at 14 px.
   const anchoEtiqueta = 124;
   const altoEtiqueta = 34;
   const margen = 8;

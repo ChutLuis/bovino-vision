@@ -59,7 +59,7 @@ export function HistorialScreen({ navigation, route }: HistorialScreenProps) {
     void cargarAnimales();
   }, [cargarAnimales]);
 
-  // The band answers "did it save?" for three seconds and then gets out of the way (handoff H1).
+  // The band answers "did it save?" for three seconds and then gets out of the way.
   useEffect(() => {
     if (guardado == null) {
       return;
@@ -126,7 +126,7 @@ export function HistorialScreen({ navigation, route }: HistorialScreenProps) {
     navigation.popToTop();
   };
 
-  // One "back" only: inside the detail it returns to the list, not out of the history (handoff D6).
+  // One "back" only: inside the detail it returns to the list, not out of the history.
   useEffect(() => {
     if (seleccionado == null) {
       return;
@@ -140,7 +140,7 @@ export function HistorialScreen({ navigation, route }: HistorialScreenProps) {
     return () => suscripcion.remove();
   }, [seleccionado]);
 
-  // D4: the row is gone; if it was the animal's last one, the animal went with it.
+  // The row is gone; if it was the animal's last one, the animal went with it.
   const borrarPesada = async (estimacion: Estimacion): Promise<void> => {
     setMensajeDetalle(null);
 
@@ -394,7 +394,7 @@ function TarjetaAnimal({ animal, destacada = false, onPress }: TarjetaAnimalProp
   );
 }
 
-// The reason a rancher opens the history at all: how much did this animal move (handoff H3).
+// The reason a rancher opens the history at all: how much did this animal move.
 function DeltaAnimal({ animal }: { animal: AnimalConResumen }) {
   if (animal.ultimo_peso_kg == null || animal.penultimo_peso_kg == null) {
     return <Text style={[styles.delta, styles.deltaNeutro]}>Primera pesada</Text>;
@@ -480,7 +480,7 @@ function FilaPesada({ anterior, estimacion, onBorrar }: FilaPesadaProps) {
   );
 }
 
-// Each row against the one before it; "= igual" makes duplicates obvious (handoff D2).
+// Each row against the one before it; "= igual" makes duplicates obvious.
 function DeltaPesada({ anterior, estimacion }: { anterior: Estimacion | null; estimacion: Estimacion }) {
   if (anterior == null) {
     return <Text style={[styles.delta, styles.deltaNeutro]}>Primera pesada</Text>;
@@ -499,7 +499,7 @@ function DeltaPesada({ anterior, estimacion }: { anterior: Estimacion | null; es
   );
 }
 
-// Header trend: the newest weighing against the one before it (handoff D1).
+// Header trend: the newest weighing against the one before it.
 function tendenciaDesde(estimaciones: Estimacion[]): string | null {
   if (estimaciones.length < 2) {
     return null;
@@ -578,7 +578,7 @@ function fechaLegible(timestamp: string): string {
   return fecha.toLocaleDateString('es-GT', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-// Short form for the delta line: "ayer", "20 ago" (handoff H3).
+// Short form for the delta line: "ayer", "20 ago".
 function fechaCorta(timestamp: string): string {
   const fecha = new Date(timestamp);
   if (Number.isNaN(fecha.getTime())) {
@@ -599,7 +599,7 @@ function fechaCorta(timestamp: string): string {
     .replace(/\.$/, '');
 }
 
-// Used by the delete confirmation so it names the same time the row shows (handoff D4).
+// Used by the delete confirmation so it names the same time the row shows.
 function horaLegible(timestamp: string): string {
   const fecha = new Date(timestamp);
   if (Number.isNaN(fecha.getTime())) {
@@ -666,7 +666,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   tendencia: {
-    // Handoff D1 fixes this green literally; it is the only lighter accent on bosque.
+    // This green is literal; it is the only lighter accent on bosque.
     color: '#8fe39c',
     fontFamily: font.bold,
   },

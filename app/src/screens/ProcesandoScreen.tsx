@@ -19,7 +19,7 @@ import { BotonPrimario } from '../ui/Botones';
 import { MarcaAruco } from '../ui/MarcaAruco';
 import { colors, font, radius } from '../ui/theme';
 
-// A finished step reads in the past tense, so progress is legible without the icon (handoff P2).
+// A finished step reads in the past tense, so progress is legible without the icon.
 const MENSAJES_ETAPA: Record<EtapaProcesamiento, string> = {
   buscando_animal: 'Animal encontrado',
   leyendo_marcador: 'Leyendo el cuadro…',

@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bordeTarjeta,
   },
   textoPrimarioDeshabilitado: {
-    // Handoff R5 fixes this grey literally; it is not part of the palette.
+    // This grey is literal; it is not part of the palette.
     color: '#8c8470',
   },
   textoPrimario: {

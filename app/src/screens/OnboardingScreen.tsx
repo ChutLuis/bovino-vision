@@ -18,7 +18,7 @@ import { colors, font } from '../ui/theme';
 
 const FOTO_EJEMPLO = require('../../assets/foto-378-limpia.jpg');
 
-// Read by SplashScreen to decide whether the guide still has to be shown (handoff O1).
+// Read by SplashScreen to decide whether the guide still has to be shown.
 export const CLAVE_ONBOARDING = 'onboarding_visto';
 
 const UMBRAL_DESLIZAMIENTO = 50;

@@ -93,7 +93,7 @@ export function CapturaScreen({ navigation, route }: CapturaScreenProps) {
   };
 
   // Coming back from a rejected gallery photo reopens the gallery, so the user does
-  // not have to remember which way they came in (handoff X4).
+  // not have to remember which way they came in.
   useEffect(() => {
     if (route.params?.abrirGaleria !== true) {
       // Releasing the guard here is what lets a second rejection reopen the gallery.

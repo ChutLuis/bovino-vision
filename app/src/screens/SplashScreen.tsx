@@ -50,7 +50,7 @@ export function SplashScreen({ navigation }: SplashScreenProps) {
     navegado.current = true;
     let vigente = true;
 
-    // First run goes through the guide; afterwards straight to the camera (handoff O1).
+    // First run goes through the guide; afterwards straight to the camera.
     AsyncStorage.getItem(CLAVE_ONBOARDING)
       .catch((cause: unknown) => {
         console.error('No se pudo leer la bandera del onboarding.', cause);
