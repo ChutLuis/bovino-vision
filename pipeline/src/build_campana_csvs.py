@@ -7,6 +7,7 @@ Entradas (directorio --grupos-dir):
 
 Salidas (directorio --out-dir):
   bitacora_campana_20260912.csv  fila,nombre,arete,categoria,peso_lb1,peso_lb2,peso_kg,telefono,notas
+                                 (con --pesos: peso_lb1 y peso_kg de la hoja de pesaje, por fila)
   fotos_por_vaca.csv             foto,grupo,fila,nombre,arete,telefono
 
 Entran las fotos con tipo `vaca` o `a25` cuyo grupo tiene fila de bitácora asignada; quedan fuera las fotos de la
@@ -20,10 +21,12 @@ from __future__ import annotations
 
 import argparse
 import csv
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-GRUPOS_DIR = Path("~/Documents/Thesis_photos_12_09_grupos").expanduser()
+# Separación por animal (bitacora_transcrita.csv, grupos.csv, resumen_grupos.csv), fuera del repositorio.
+GRUPOS_DIR = Path(os.environ["BOVINO_CAMPANA_GRUPOS"]).expanduser() if os.environ.get("BOVINO_CAMPANA_GRUPOS") else None
 OUT_DIR = ROOT / "data/field/campana_20260912"
 
 TIPOS_MEDIBLES = {"vaca", "a25"}
@@ -102,14 +105,37 @@ def construir(grupos_dir: Path) -> tuple[list[dict[str, str]], list[dict[str, st
     return filas_bitacora, filas_fotos
 
 
+LB_A_KG = 0.45359237
+
+
+def incorporar_pesos(bitacora: list[dict[str, str]], pesos_csv: Path) -> None:
+    """Copia a la bitácora la lectura de cinta de cada fila (`peso_lb1`, `peso_kg`) y anota fecha e instrumento."""
+    pesos = {r["fila"]: r for r in leer_csv(pesos_csv)}
+    for b in bitacora:
+        r = pesos.get(b["fila"])
+        if r is None or not r.get("peso_lb", "").strip():
+            continue
+        if r["nombre"].strip() != b["nombre"] or r["arete"].strip() != b["arete"]:
+            raise ValueError(f"fila {b['fila']}: la hoja de pesaje ({r['nombre']}, {r['arete']}) no coincide con la bitácora")
+        lb = float(r["peso_lb"])
+        b["peso_lb1"] = r["peso_lb"].strip()
+        b["peso_kg"] = f"{lb * LB_A_KG:.3f}"
+        nota = f"pesaje {r['fecha_pesaje']}, {r['instrumento']}"
+        b["notas"] = f"{b['notas']}; {nota}" if b["notas"] else nota
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Genera bitacora_campana_20260912.csv y fotos_por_vaca.csv.")
-    ap.add_argument("--grupos-dir", type=Path, default=GRUPOS_DIR,
-                    help="directorio con bitacora_transcrita.csv, grupos.csv y resumen_grupos.csv")
+    ap.add_argument("--grupos-dir", type=Path, default=GRUPOS_DIR, required=GRUPOS_DIR is None,
+                    help="directorio con bitacora_transcrita.csv, grupos.csv y resumen_grupos.csv (o $BOVINO_CAMPANA_GRUPOS)")
     ap.add_argument("--out-dir", type=Path, default=OUT_DIR, help="directorio de salida")
+    ap.add_argument("--pesos", type=Path, default=None,
+                    help="CSV de la hoja de pesaje (fila, nombre, arete, peso_lb, fecha_pesaje, instrumento) para rellenar peso_lb1 y peso_kg")
     args = ap.parse_args(argv)
 
     bitacora, fotos = construir(args.grupos_dir.expanduser())
+    if args.pesos is not None:
+        incorporar_pesos(bitacora, args.pesos.expanduser())
     out_dir = args.out_dir.expanduser()
     escribir_csv(out_dir / "bitacora_campana_20260912.csv", CAMPOS_BITACORA, bitacora)
     escribir_csv(out_dir / "fotos_por_vaca.csv", CAMPOS_FOTOS, fotos)

@@ -23,7 +23,7 @@ Pipeline de estimación de peso bovino. Identidad y pesos **validados** contra e
 - `features_grouped.csv` — morfometría desde las máscaras de las ráfagas (lo genera `src/measure_grouped_masks.py --masks-root …`). 497 fotos / 19 vacas pesadas. Recalculado el 10 sep 2026 con máscaras del segmentador corregido; el CSV anterior queda en `features_grouped_v1_letterbox_bug_20260609.csv`.
 - Probado: ráfagas solas o combinadas DEGRADAN el modelo de peso (marcador a distancia variable → escala inconsistente). Ver `src/eval_compare_datasets.py`: ráfagas MAPE 10.17 % (R² 0.03), combinado 10.14 % (R² 0.24), frente a 7.71 % (R² 0.54) de fotos_hoy.
 - Para segmentación son datos de ENTRENAMIENTO (train del fine-tuning); el IoU se mide contra `../val_clean/` (40 imágenes manuales). Resultado: el fine-tuning empeora al preentrenado; ver `../../FINETUNING.md`.
-- **Máscaras (10 sep 2026):** los PNG de `_grouped/*/mascaras/` (jun 2026) se generaron con `CowSegmenter` antes de corregir el recorte del relleno del letterbox (9 sep 2026): en las ráfagas 16:9 están aplastados ~6 % en vertical. Se regeneraron con el segmentador corregido en `~/Documents/Thesis_final_raw/mascaras_regen_20260909/` (`src/auto_mask.py --all --out …`, fuera del repo, sin tocar los originales) y `features_grouped.csv` se recalculó con ellas: IoU viejo/nuevo mediano 0.925, área +5.6 %, MAPE de ráfagas 10.09 → 10.17 %. Informe: `informes/mascaras_rafagas_regen_20260910/`. El builder del `seg_dataset` sigue leyendo los PNG de junio.
+- **Máscaras (10 sep 2026):** los PNG de `_grouped/*/mascaras/` (jun 2026) se generaron con `CowSegmenter` antes de corregir el recorte del relleno del letterbox (9 sep 2026): en las ráfagas 16:9 están aplastados ~6 % en vertical. Se regeneraron con el segmentador corregido en `mascaras_regen_20260909/` del archivo de crudos (`src/auto_mask.py --all --out …`, fuera del repositorio, sin tocar los originales) y `features_grouped.csv` se recalculó con ellas: IoU viejo/nuevo mediano 0.925, área +5.6 %, MAPE de ráfagas 10.09 → 10.17 %. Informe: `informes/mascaras_rafagas_regen_20260910/`. El builder del `seg_dataset` sigue leyendo los PNG de junio.
 - Identidad: el inventario asigna el arete 236703 a IRIS y a KARINA; las carpetas `6703*` son `IRIS/KARINA` y para el split se tratan como un solo animal (`ALIASES` en `build_yolo_seg_dataset.py`). `6706` no tiene match y se excluye de train.
 - Carpetas de vacas NO pesadas (Manzanilla, Lucero, Gaby, Nahomi, Ambar, Taty, Mariposa, Estrellita, Senorita) y `6706` (arete sin match) no se usan para peso.
 
@@ -33,23 +33,27 @@ cd pipeline
 python3 build_fotos_hoy_mapping.py        # (desde raíz repo) mapeo + mosaico validación
 python3 src/measure_fotos_hoy.py          # morfometría fotos_hoy -> features_fotos_hoy.csv
 python3 src/eval_weight_fotos_hoy.py      # LOO + IC bootstrap -> métricas + pred_vs_real
-python3 src/measure_grouped_masks.py --masks-root ~/Documents/Thesis_final_raw/mascaras_regen_20260909  # morfometría ráfagas -> features_grouped.csv
+python3 src/measure_grouped_masks.py --masks-root $BOVINO_RAW_GROUPED/mascaras_regen_20260909  # morfometría ráfagas -> features_grouped.csv
 python3 src/eval_compare_datasets.py      # comparación fotos_hoy vs ráfagas vs combinado
 python3 src/eval_finetuned_iou.py --visual # IoU de segmentadores contra val_clean -> informes/iou_val_manual_<fecha>/
 ```
 
 ## Campaña de calibración (12 sep 2026) → `campana_20260912/`
-- Crudos fuera del repositorio: `~/Documents/Thesis_photos_12_09/` (1226 JPG con `MANIFEST.sha1`: 1202 Xiaomi 15 Ultra, 24 Galaxy A25); se pasan con `--fotos` o `$BOVINO_CAMPANA_RAW`. Agrupación por animal y tabla transcrita en `~/Documents/Thesis_photos_12_09_grupos/` (entrada de `build_campana_csvs.py`).
-- `bitacora_campana_20260912.csv`: 40 animales (`fila,nombre,arete,categoria,peso_lb1,peso_lb2,peso_kg,telefono,notas`). `arete` es texto con ceros a la izquierda. Los pesos de referencia y la categoría se completan con el pesaje de la finca; hasta entonces `eval_weight_campana.py` termina con código 2.
+- Crudos fuera del repositorio: 1226 JPG con `MANIFEST.sha1` (1202 Xiaomi 15 Ultra, 24 Galaxy A25); se pasan con `--fotos` o `$BOVINO_CAMPANA_RAW`. Agrupación por animal y tabla transcrita en el directorio `--grupos-dir` o `$BOVINO_CAMPANA_GRUPOS` (entrada de `build_campana_csvs.py`).
+- `bitacora_campana_20260912.csv`: 40 animales (`fila,nombre,arete,categoria,peso_lb1,peso_lb2,peso_kg,telefono,notas`). `arete` es texto tal como lo trae la hoja de pesaje del 20 de septiembre de 2026, que manda en nombres y aretes (cuatro nombres y siete aretes corregidos respecto a la transcripción de campo). `peso_lb1`/`peso_kg`: lectura de cinta del 20 de septiembre (`--pesos` de `build_campana_csvs.py`); `categoria` no se registró.
 - `fotos_por_vaca.csv`: 1198 fotografías → animal (1174 Xiaomi, 24 A25; sin las 27 fotografías de la tabla ni la fotografía suelta).
 - `features_campana_20260912.csv`: una fila por fotografía. Marcador (media de los cuatro lados, `px_per_cm`), distancia estimada `d = f_px·0.15/marker_px` con `f_px = W·f35/36` (EXIF), nivel nominal 2.5/3.0/3.5 m, morfometría de `core/`, `lateral_area_cm2_corr = A·((d+0.50)/d)²` (corrección de paralaje, Δ = 0.50 m), `seleccionada_3m` (las cinco fotografías por animal con marcador y silueta más cercanas a 3.0 m) y `estado` (`ok`, `sin_marcador`, `sin_vaca`, `silueta_cortada`). El rango de plausibilidad de longitud del piloto (110–190 cm) no se aplica; `informes/campana_20260912/resumen.md` da los percentiles de la campaña.
-- Informe sin pesos: `../../informes/campana_20260912/` (decodificación, repetibilidad, robustez a la distancia y elección de Δ).
+- `pesos_20260920.csv`: referencias de peso (`fila,nombre,arete,peso_lb,fecha_pesaje,instrumento,fuente`): 40 animales, cinta bovinométrica, una lectura por una experta, 20 de septiembre de 2026.
+- `medidas_app_3m_20260912.csv`: las 200 fotografías preseleccionadas (cinco por animal cerca de 3.0 m) medidas por la ruta de la aplicación reproducida en PC (jpeg-js, LiteRT FP32, `segment.ts`, js-aruco2): `primaria` (la más cercana a 3.0 m, fijada antes de los pesos), `estado` (`ok`/`sin_vaca`), `revision_visual`, `area_cm2` cruda, máscara, escala, caja y sha256 de la fotografía. Es la entrada de `eval_weight_campana.py`.
+- `cruce_junio_20260912.csv`: correspondencia por identidad con los pesos de la campaña piloto (`pesos_orden_pesaje.csv`, `repesaje_1206/`): 22 animales con peso en ambas campañas.
+- Informe: `../../informes/campana_20260912/` (decodificación, repetibilidad, robustez a la distancia y elección de Δ) y `peso/` (modelo de peso, bundle y estadística complementaria).
 
 ```bash
 cd pipeline
 python3 src/build_campana_csvs.py                       # bitácora + fotos_por_vaca desde la agrupación auditada
 python3 src/measure_campana.py                          # medidas por fotografía (≈ 15 min de CPU) + overlays QA fuera del repo
-python3 src/report_campana.py --fotos ~/Documents/Thesis_photos_12_09   # informes/campana_20260912/
-python3 src/eval_weight_campana.py                      # con pesos en la bitácora: LOO, IC95, IP, AIC, pliegue por distancia
-python3 src/make_weight_bundle.py --metricas ../informes/campana_20260912/metricas.json --out weight_model.json
+python3 src/report_campana.py --fotos $BOVINO_CAMPANA_RAW   # informes/campana_20260912/
+python3 src/build_campana_csvs.py --pesos data/field/campana_20260912/pesos_20260920.csv   # con la lectura de cinta en la bitácora
+python3 src/eval_weight_campana.py --out ../informes/campana_20260912/peso   # una foto por animal, LOO, IP; weight_model.json y golden
+python3 src/weight_stats_campana.py                     # k-fold repetido, bootstrap de a y b, Bland–Altman, CCC, modelo del piloto
 ```

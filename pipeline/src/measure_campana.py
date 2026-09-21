@@ -44,8 +44,10 @@ from core.morphometry import measure  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data/field/campana_20260912"
-FOTOS_DIR = Path(os.environ.get("BOVINO_CAMPANA_RAW", "~/Documents/Thesis_photos_12_09")).expanduser()
-QA_DIR = Path("~/Documents/Thesis_photos_12_09_qa").expanduser()
+# Fotografías originales de la campaña, fuera del repositorio: --fotos o $BOVINO_CAMPANA_RAW.
+FOTOS_DIR = Path(os.environ["BOVINO_CAMPANA_RAW"]).expanduser() if os.environ.get("BOVINO_CAMPANA_RAW") else None
+# Overlays de control, fuera del repositorio: --qa-dir, $BOVINO_CAMPANA_QA o, por defecto, <fotos>_qa junto a los crudos.
+QA_DIR = Path(os.environ["BOVINO_CAMPANA_QA"]).expanduser() if os.environ.get("BOVINO_CAMPANA_QA") else None
 MODELO = ROOT / "models/yolo26n-seg.pt"
 
 MARKER_CM = 15.0
@@ -245,20 +247,20 @@ def resumen(filas: list[dict], out_csv: Path, qa_dir: Path, segundos: float) -> 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Mide las fotos de la campaña de calibración (escala, distancia, morfometría).")
-    ap.add_argument("--fotos", type=Path, default=FOTOS_DIR, help="directorio con las fotos originales")
+    ap.add_argument("--fotos", type=Path, default=FOTOS_DIR, required=FOTOS_DIR is None, help="directorio con las fotos originales (o $BOVINO_CAMPANA_RAW)")
     ap.add_argument("--fotos-por-vaca", type=Path, default=DATA_DIR / "fotos_por_vaca.csv", help="CSV foto → vaca")
     ap.add_argument("--out", type=Path, default=DATA_DIR / "features_campana_20260912.csv", help="CSV de salida")
     ap.add_argument("--modelo", type=Path, default=MODELO, help="pesos YOLO26n-seg")
     ap.add_argument("--delta", type=float, default=DELTA_PARALAJE_M, help="Δ de paralaje marcador–silueta (m)")
     ap.add_argument("--marker-cm", type=float, default=MARKER_CM, help="lado real del marcador impreso (cm)")
-    ap.add_argument("--qa-dir", type=Path, default=QA_DIR, help="directorio de overlays de control (fuera del repositorio)")
+    ap.add_argument("--qa-dir", type=Path, default=QA_DIR, help="directorio de overlays de control, fuera del repositorio (o $BOVINO_CAMPANA_QA; por defecto <fotos>_qa)")
     ap.add_argument("--limit", type=int, default=None, help="medir solo las primeras N fotos")
     args = ap.parse_args(argv)
 
     from core.segmenter import CowSegmenter  # import diferido: la prueba unitaria no necesita ultralytics
 
     fotos_dir = args.fotos.expanduser()
-    qa_dir = args.qa_dir.expanduser()
+    qa_dir = (args.qa_dir or fotos_dir.with_name(fotos_dir.name + "_qa")).expanduser()
     entradas = leer_fotos_por_vaca(args.fotos_por_vaca.expanduser(), args.limit)
     faltan = [r["foto"] for r in entradas if not (fotos_dir / r["foto"]).is_file()]
     if faltan:
