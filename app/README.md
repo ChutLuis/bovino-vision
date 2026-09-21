@@ -22,7 +22,7 @@ viajan dentro del APK.
 |---|---|
 | `domain/estimarPeso.ts`, `domain/types.ts` | Orquesta foto → segmentación → marcador → área → peso; compone `version_modelo`. No toca UI ni base de datos. |
 | `vision/` | `tflite.ts` (react-native-fast-tflite), `image.ts` (decodificación JPEG, orientación EXIF, letterbox 640×640), `segment.ts` (máscara y vaca de mayor área), `aruco.ts` (js-aruco2 a resolución fuente), `morphometry.ts` (área en cm²), `modelManifest.ts` y `config.ts` (clase y hash del segmentador leídos del manifiesto). |
-| `estimation/` | `bundle.ts` carga `weight_model.json`; `weightModel.ts` aplica W = a·A^b. |
+| `estimation/` | `bundle.ts` carga y valida `weight_model.json`; `weightModel.ts` aplica W = a·A^b; `interval.ts` calcula el intervalo de predicción al 95 % y su texto. |
 | `data/` | `db/schema.ts` y `db/dao.ts` (expo-sqlite), `photos.ts` (copia a `wakx-fotos/` privado), `export/csv.ts` (CSV e intent de compartir). |
 | `providers/ModelProvider.tsx` | Precarga y calienta el modelo al abrir la app. |
 | `screens/` | `SplashScreen`, `OnboardingScreen`, `CapturaScreen`, `ProcesandoScreen`, `ResultadoScreen`, `HistorialScreen`. |
@@ -34,8 +34,8 @@ viajan dentro del APK.
 |---|---|
 | `yolo26n-seg.tflite` | YOLO26n-seg preentrenado en COCO, LiteRT FP32, 12 MB; mismo cuerpo que `pipeline/models/yolo26n-seg.tflite`. |
 | `model_manifest.json` | sha256 del `.tflite` y de su cuerpo, `.pt` de origen, versiones de Ultralytics, `class_id` 19 = cow, 80 nombres. Se valida al importar; `pipeline/tests/test_export_contract.py` falla si no coincide con el archivo. |
-| `weight_model.json` | `a`, `b`, `interval`, `version`, `fuente`. Hoy `a = 0.375`, `b = 0.706`, `interval = null` (n = 34, laterales controladas); se reajusta con la campaña de calibración. |
-| `golden_cases.json` | 10 casos área → peso con tolerancia 0.01 kg. |
+| `weight_model.json` | `a`, `b`, `interval`, `version`, `fuente`, `calibration`. Bundle `campana-994d9c2cd1a6`: a = 2.3410, b = 0.5347, intervalo de predicción log-log al 95 % (n = 40, σ_log 0.0924, rango de calibración 9808–16899 cm²), ajustado sobre los 40 animales de la campaña del 12 de septiembre de 2026 con pesos de cinta del 20 de septiembre; esquema en `docs/03_arquitectura_apk.md`. |
+| `golden_cases.json` | 10 casos área → peso e intervalo con tolerancia 1e-8 kg. |
 
 Los coeficientes nunca se escriben en TypeScript. Cada estimación guarda
 `version_modelo = peso:<versión>;seg:<sha256[0:16]>`, así el historial dice qué modelo produjo cada peso.
@@ -55,7 +55,7 @@ APK se reproduce en PC con `pipeline/src/core/segmenter_litert.py`.
 cd app
 npm ci
 npm run typecheck              # tsc --noEmit
-npm run test:golden            # compila weightModel.ts aislado y corre los 10 casos golden
+npm run test:golden            # compila estimation/ aislado y corre los 10 casos golden de peso e intervalo
 npm run android -- SM_A256E    # busca un JDK 17, ANDROID_HOME y adb; compila, instala y arranca Metro en el dispositivo
 npm run prebuild:android       # tras cambiar app.json o una dependencia nativa
 npm run start:dev-client       # Metro para un development client ya instalado

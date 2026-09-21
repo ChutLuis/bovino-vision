@@ -37,7 +37,7 @@ app/src/
 ├── vision/         image.ts (JPEG, orientación EXIF, letterbox 640×640) · tflite.ts (react-native-fast-tflite)
 │                   segment.ts (máscara, vaca de mayor área) · aruco.ts (js-aruco2 a resolución fuente)
 │                   morphometry.ts (área en cm²) · modelManifest.ts, config.ts (clase y hash del segmentador)
-├── estimation/     bundle.ts (weight_model.json) · weightModel.ts (W = a·A^b)
+├── estimation/     bundle.ts (weight_model.json) · weightModel.ts (W = a·A^b) · interval.ts (IP 95 % log-log)
 ├── data/           db/schema.ts, db/dao.ts (expo-sqlite) · photos.ts (copia privada) · export/csv.ts
 └── ui/, navigation/
 ```
@@ -49,8 +49,21 @@ Cada módulo de `vision/` y `estimation/` es espejo de uno del pipeline, mismo a
 | `segment.ts` + `image.ts` | `core/segmenter_litert.py` (y `core/segmenter.py` para el `.pt`) | `tests/test_parity_a25.py`: mismas detecciones y área en 10 fotos medidas en el A25 |
 | `aruco.ts` | `core/aruco.py` + `core/calibration.py` | `eval_aruco_parity.py`: escala js-aruco2 vs OpenCV |
 | `morphometry.ts` | `core/morphometry.py` | Área en cm² a partir de la misma máscara y escala |
-| `weightModel.ts` | `eval_weight_fotos_hoy.py` | `npm run test:golden`: 10 casos con tolerancia 0.01 kg |
+| `weightModel.ts` + `interval.ts` | `eval_weight_campana.py` (mismo bundle y golden) | `npm run test:golden`: 10 casos de peso e intervalo con tolerancia 1e-8 kg |
 | `modelManifest.ts` | `make_model_manifest.py` | `tests/test_export_contract.py`: sha256 del `.tflite` = manifiesto |
+
+## Paquete de peso (`weight_model.json`)
+
+| Campo | Contenido |
+|---|---|
+| `a`, `b` | Coeficientes de W = a·A^b con A en cm². Bundle vigente `campana-994d9c2cd1a6`: a = 2.3410, b = 0.5347, ajuste log-log sobre una fotografía por animal (la primaria o, si la ruta la rechazó, la siguiente aceptada del orden de preselección) de la campaña del 12 de septiembre de 2026 con pesos de cinta del 20 de septiembre, n = 40, LOO por animal (`informes/campana_20260912/peso/`). |
+| `interval` | `kind = loglog_prediction`, `level = 0.95`, `n`, `x_mean` y `sxx` (media y suma de cuadrados de ln A en el ajuste), `sigma_log`, `t_critical`, `area_min`, `area_max`. La app calcula para cada estimación `h = t_critical · sigma_log · √(1 + 1/n + (ln A − x_mean)² / sxx)` y los límites `peso · e^(−h)` y `peso · e^(h)`; fuera de `[area_min, area_max]` el resultado se marca como extrapolación. `interval = null` significa que el bundle no define intervalo y la pantalla lo dice. |
+| `version`, `fuente` | Identificador del ajuste (digest de las referencias y de las fotografías que entran) y su procedencia; `version` entra en `version_modelo`. |
+| `calibration` | Fecha de las fotografías, fechas e instrumentos de referencia, ruta de medida, animales y sha256 de las fuentes. Informativo: la app no lo lee. |
+
+`golden_cases.json` fija 10 áreas con su peso y sus dos límites esperados (tolerancia 1e-8 kg) y `npm run test:golden`
+los reproduce con el mismo código que la app. Cada estimación se guarda con
+`version_modelo = peso:campana-994d9c2cd1a6;seg:14b35a7ba712f8b0`.
 
 ## Secuencia foto → peso
 
