@@ -1,127 +1,204 @@
 """Contrato de `eval_weight_campana.py`.
 
-(1) Sobre el piloto (`features_fotos_hoy.csv`, 34 vacas con una foto) el ajuste log-log reproduce los
-coeficientes del bundle vigente (a = 0.375, b = 0.706) y el MAPE LOO de 7.71 %.
-(2) Con una bitácora sin pesos el programa avisa por stderr, no escribe nada y devuelve 2.
-(3) Con una campaña sintética (40 vacas × 5 fotos seleccionadas más fotos a 2.5 y 3.5 m, esquema del
-CSV de medidas, peso = 0.4·área^0.7·ruido lognormal σ = 0.05) recupera a y b, escribe `metricas.json`
-con todas las claves del contrato y evalúa los pliegues a 2.5 y 3.5 m.
+(1) Ajuste log-log cerrado e intervalo de predicción iguales a la fórmula matricial.
+(2) LOO por animal sin fuga: el animal evaluado no participa de su pliegue.
+(3) Validación de referencias: unidades, faltantes, duplicados, fechas futuras e identidades.
+(4) Recorrido sintético completo: sustitución de la primaria rechazada por la siguiente aceptada, exclusiones,
+    secundario con los mismos animales, bundle y golden coherentes.
+(5) Los datos de la campaña reproducen exactamente el bundle y el golden de `app/assets/model_bundle/`.
 """
+import csv
 import json
+import math
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import pytest
+from scipy.stats import t as tdist
 
 import eval_weight_campana as ev
 
 ROOT = Path(__file__).resolve().parent.parent
-PILOTO = ROOT / "data/field/features_fotos_hoy.csv"
-
-COLUMNAS_FEATURES = [
-    "foto", "fila", "nombre", "arete", "telefono", "marker_px", "px_per_cm", "distancia_m", "nivel_distancia",
-    "cow_conf", "area_px", "lateral_area_cm2", "lateral_area_cm2_corr", "body_length_cm", "height_cm",
-    "chest_depth_cm", "aspect_ratio", "fill_ratio", "marcador_en_caja", "seleccionada_3m", "estado",
-]
-COLUMNAS_BITACORA = ["fila", "nombre", "arete", "categoria", "peso_lb1", "peso_lb2", "peso_kg", "telefono", "notas"]
-CLAVES_CONTRATO = {
-    "a", "b", "mape", "mape_ic95", "r2", "rmse", "mae", "sigma_log", "t", "n", "factor_ip",
-    "aic_alometrico", "aic_multivariado", "mape_pliegue_distancia",
-    "area", "mape_multivariado", "icc_repetibilidad", "cv_intra_pct", "bland_altman", "alternativa",
-    "n_fotos", "seleccion",
-}
+APP_BUNDLE = ROOT.parent / "app/assets/model_bundle"
 
 
-def test_piloto_reproduce_coeficientes_y_mape_loo():
-    df = pd.read_csv(PILOTO).dropna(subset=["lateral_area_cm2", "weight_kg"])
-    assert len(df) == 34
-    area = df["lateral_area_cm2"].to_numpy(float)
-    peso = df["weight_kg"].to_numpy(float)
-    a, b = ev.ajustar_loglog(area, peso)
-    assert a == pytest.approx(0.375, abs=0.005)
-    assert b == pytest.approx(0.706, abs=0.005)
-    assert ev.mape(peso, ev.loo_loglog(area, peso)) == pytest.approx(7.71, abs=0.05)
+def test_fit_cerrado_e_intervalo():
+    area = np.array([100, 200, 400, 800, 1600.0])
+    m = ev.fit(area, 2 * area ** 0.5)
+    assert m["a"] == pytest.approx(2, abs=1e-12)
+    assert m["b"] == pytest.approx(0.5, abs=1e-12)
+    p, lo, hi = ev.predict(m, 300)
+    assert float(p) == pytest.approx(2 * math.sqrt(300), abs=1e-10)
+    assert float(lo) <= float(p) <= float(hi)
 
 
-def _fila_foto(fila, nombre, i, area, d, nivel, sel, estado="ok"):
-    corr = area * ((d + 0.5) / d) ** 2
-    return {
-        "foto": f"IMG_{fila:02d}_{i:02d}.jpg", "fila": fila, "nombre": nombre, "arete": f"{fila:06d}",
-        "telefono": "xiaomi_15_ultra", "marker_px": round(2616.9 * 0.15 / d, 2), "px_per_cm": round(2616.9 * 0.01 / d, 4),
-        "distancia_m": round(d, 3), "nivel_distancia": nivel, "cow_conf": 0.95, "area_px": round(area * 70),
-        "lateral_area_cm2": round(area, 2), "lateral_area_cm2_corr": round(corr, 2),
-        "body_length_cm": round(0.012 * area + 40, 2), "height_cm": round(0.006 * area + 50, 2),
-        "chest_depth_cm": 80.0, "aspect_ratio": 1.7, "fill_ratio": 0.5, "marcador_en_caja": 1,
-        "seleccionada_3m": sel, "estado": estado,
-    }
+def test_intervalo_igual_a_la_formula_matricial():
+    area = np.array([8000, 11000, 14000, 18000, 21000, 26000.0])
+    y = np.array([210, 260, 330, 360, 420, 470.0])
+    x = np.log(area)
+    X = np.column_stack([np.ones(len(x)), x])
+    beta = np.linalg.lstsq(X, np.log(y), rcond=None)[0]
+    residual = np.log(y) - X @ beta
+    s2 = residual @ residual / (len(x) - 2)
+    x0 = np.array([1, math.log(16000)])
+    mu = x0 @ beta
+    half = tdist.ppf(0.975, len(x) - 2) * math.sqrt(s2 * (1 + x0 @ np.linalg.inv(X.T @ X) @ x0))
+    p, lo, hi = ev.predict(ev.fit(area, y), 16000)
+    assert float(p) == pytest.approx(math.exp(mu), abs=1e-9)
+    assert float(lo) == pytest.approx(math.exp(mu - half), abs=1e-9)
+    assert float(hi) == pytest.approx(math.exp(mu + half), abs=1e-9)
 
 
-def _campana_sintetica(tmp_path: Path, con_pesos: bool, n_vacas=40, seed=7):
-    """CSV de medidas y bitácora con el esquema de la campaña; peso = 0.4·área^0.7·ruido lognormal σ = 0.05."""
-    rng = np.random.default_rng(seed)
-    filas, bitacora = [], []
-    for fila in range(1, n_vacas + 1):
-        nombre = f"Vaca{fila:02d}"
-        area_real = rng.uniform(11000, 20000)
-        i = 0
-        for _ in range(5):  # seleccionadas, alrededor de 3.0 m
-            i += 1
-            filas.append(_fila_foto(fila, nombre, i, area_real * rng.lognormal(0, 0.03), rng.uniform(2.85, 3.15), 3.0, 1))
-        for nivel in (2.5, 3.5):  # pliegues de distancia
-            for _ in range(3):
-                i += 1
-                filas.append(_fila_foto(fila, nombre, i, area_real * rng.lognormal(0, 0.03), rng.uniform(nivel - 0.1, nivel + 0.1), nivel, 0))
-        i += 1
-        filas.append(_fila_foto(fila, nombre, i, area_real, 3.0, 3.0, 0, estado="sin_marcador"))
-        peso = 0.4 * area_real ** 0.7 * rng.lognormal(0, 0.05)
-        bitacora.append({"fila": fila, "nombre": nombre, "arete": f"{fila:06d}", "categoria": "", "peso_lb1": "",
-                         "peso_lb2": "", "peso_kg": f"{peso:.1f}" if con_pesos else "",
-                         "telefono": "xiaomi_15_ultra", "notas": ""})
-    f = pd.DataFrame(filas)[COLUMNAS_FEATURES]
-    b = pd.DataFrame(bitacora)[COLUMNAS_BITACORA]
-    f.to_csv(tmp_path / "features.csv", index=False)
-    b.to_csv(tmp_path / "bitacora.csv", index=False)
-    return tmp_path / "features.csv", tmp_path / "bitacora.csv"
+def test_loo_sin_fuga_y_atipico_fuera():
+    area = [100, 200, 300, 400, 500, 600]
+    weights = [10, 14, 18, 20, 23, 90]
+    ids = list("abcdef")
+    r = ev.evaluate(area, weights, ids)
+    for fold in r["pliegues"]:
+        assert fold["animal_test"] not in fold["animales_train"]
+    cambiado = ev.evaluate(area, weights[:-1] + [200], ids)
+    assert r["predicciones"][-1]["pred_loo_kg"] == cambiado["predicciones"][-1]["pred_loo_kg"]
+    assert r["metricas"]["n_animales"] == 6
 
 
-def test_bitacora_sin_pesos_devuelve_2_y_no_escribe(tmp_path, capsys):
-    features, bitacora = _campana_sintetica(tmp_path, con_pesos=False)
+def test_area_constante_rechazada():
+    with pytest.raises(ValueError):
+        ev.fit([1, 1, 1], [2, 3, 4])
+
+
+def test_aic_mismo_n_y_k():
+    x = np.array([[100 + i * 20, 10 + i + (i % 3), 8 + i * 0.5 + (i % 2)] for i in range(12)])
+    r = ev.compare_aic(x, 2 * x[:, 0] ** 0.5 * np.exp(0.03 * np.sin(np.arange(12))))
+    assert r["area"]["n"] == r["multivariado_bbox"]["n"] == 12
+    assert r["area"]["k_incluye_varianza"] == 3
+    assert r["selecciona_bundle"] is False
+
+
+def _escribir(path: Path, rows, fields):
+    with path.open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=fields, lineterminator="\n")
+        w.writeheader()
+        w.writerows(rows)
+
+
+def test_leer_pesos_valida_unidades_faltantes_duplicados_e_identidad(tmp_path):
+    ident = {"1": {"nombre": "A", "arete": "001"}, "2": {"nombre": "B", "arete": ""}}
+    fields = ["fila", "nombre", "arete", "peso_lb", "fecha_pesaje", "instrumento", "fuente", "peso_lb2"]
+    fila1 = {"fila": "1", "nombre": "A", "arete": "001", "peso_lb": "1000", "fecha_pesaje": "2026-09-20", "instrumento": "cinta", "fuente": "hoja"}
+    p = tmp_path / "pesos.csv"
+    _escribir(p, [fila1, {"fila": "2", "nombre": "B", "arete": ""}], fields)
+    valid, missing = ev.leer_pesos(p, ident)
+    assert valid["1"]["peso_ref_kg"] == pytest.approx(453.59237)
+    assert valid["1"]["lectura2_kg"] is None
+    assert missing == ["2"]
+    _escribir(p, [fila1, {**fila1, "fila": "2", "nombre": "B", "arete": "", "peso_lb2": "1010"}], fields)
+    valid, _ = ev.leer_pesos(p, ident)
+    assert valid["2"]["peso_ref_kg"] == pytest.approx(1005 * 0.45359237)
+    for malo in ([fila1, fila1], [{**fila1, "peso_lb": "nan"}], [{**fila1, "fecha_pesaje": "2099-01-01"}],
+                 [{**fila1, "nombre": "Z"}], [{**fila1, "fuente": ""}], [{**fila1, "fila": "9"}]):
+        _escribir(p, malo, fields)
+        with pytest.raises(ValueError):
+            ev.leer_pesos(p, ident)
+
+
+def test_version_depende_de_pesos_y_fotografias_no_del_formato():
+    refs_a = {"2": {"peso_lb": "810"}, "1": {"peso_lb": " 905 "}}
+    refs_b = {"1": {"peso_lb": "905", "nombre": "otra cosa"}, "2": {"peso_lb": "810"}}
+    sel = {"1": {"foto": "a.jpg", "sha256_foto": "aa"}, "2": {"foto": "b.jpg", "sha256_foto": "bb"}}
+    ids = ["2", "1"]
+    v = ev.version_desde_ajuste(refs_a, sel, ids)
+    assert v == ev.version_desde_ajuste(refs_b, sel, ["1", "2"]) and v.startswith("campana-")
+    assert ev.version_desde_ajuste({"1": {"peso_lb": "906"}, "2": {"peso_lb": "810"}}, sel, ids) != v
+    otra_foto = {**sel, "2": {"foto": "c.jpg", "sha256_foto": "cc"}}
+    assert ev.version_desde_ajuste(refs_a, otra_foto, ids) != v
+
+
+def test_seleccionar_fotos_primaria_o_siguiente_aceptada():
+    def m(fila, k, estado="ok", rev="aceptar"):
+        return {"fila": fila, "foto": f"{fila}_{k}.jpg", "primaria": "1" if k == 1 else "0", "rango_3m": str(k),
+                "estado": estado, "revision_visual": rev, "area_cm2": "100" if estado == "ok" else ""}
+    medidas = [m("1", 1), m("1", 2), m("2", 1, "sin_vaca"), m("2", 2, "sin_vaca"), m("2", 3), m("3", 1, "ok", "excluir"), m("3", 2, "sin_marcador")]
+    sel, sust = ev.seleccionar_fotos(medidas, ["1", "2", "3"])
+    assert sel["1"]["foto"] == "1_1.jpg" and sel["2"]["foto"] == "2_3.jpg" and "3" not in sel
+    assert sust == [{"fila": "2", "foto_primaria": "2_1.jpg", "motivo_primaria": "sin_vaca", "foto": "2_3.jpg", "rango_3m": 3}]
+    with pytest.raises(ValueError):
+        ev.seleccionar_fotos([m("1", 1), m("1", 1)], ["1"])
+
+
+def _campana_sintetica(tmp_path: Path, n_vacas=12):
+    bit, med, pesos = [], [], []
+    for i in range(1, n_vacas + 1):
+        nombre, arete = f"SINTETICA_{i}", f"T{i:03d}"
+        bit.append({"fila": str(i), "nombre": nombre, "arete": arete, "categoria": "", "peso_lb1": "", "peso_lb2": "", "peso_kg": "", "telefono": "x", "notas": ""})
+        area = 10000 + i * 1200
+        peso_kg = 0.4 * area ** 0.7 * math.exp(0.035 * math.sin(i))
+        if i != n_vacas:  # el último animal queda sin peso
+            pesos.append({"fila": str(i), "nombre": nombre, "arete": arete, "peso_lb": f"{peso_kg / 0.45359237:.4f}",
+                          "fecha_pesaje": "2026-09-20", "instrumento": "cinta", "fuente": "sintético"})
+        for k in range(5):
+            # la primaria del animal 2 se rechaza (entra su siguiente foto); el animal 3 no tiene ninguna aceptada
+            estado = "sin_vaca" if (i == 2 and k == 0) or i == 3 else "ok"
+            med.append({"foto": f"S_{i}_{k}.jpg", "fila": str(i), "nombre": nombre, "arete": arete, "primaria": "1" if k == 0 else "0",
+                        "rango_3m": str(k + 1), "distancia_previa_m": "3.0", "estado": estado, "revision_visual": "aceptar",
+                        "area_cm2": "" if estado != "ok" else f"{area * (1 + 0.01 * k):.4f}", "mask_area_px": "1", "cm_per_px": "0.1",
+                        "marker_side_px": "150", "cow_dets": "1", "selected_confidence": "0.9",
+                        "bbox_x0": "0", "bbox_y0": "0", "bbox_x1": str(1000 + i * 70 + (i % 3)), "bbox_y1": str(700 + i * 20 + (i % 2)), "sha256_foto": ""})
+    _escribir(tmp_path / "bitacora.csv", bit, list(bit[0]))
+    _escribir(tmp_path / "medidas.csv", med, list(med[0]))
+    _escribir(tmp_path / "pesos.csv", pesos, list(pesos[0]))
+
+
+def test_recorrido_sintetico(tmp_path):
+    _campana_sintetica(tmp_path)
     out = tmp_path / "salida"
-    rc = ev.main(["--features", str(features), "--bitacora", str(bitacora), "--out", str(out), "--n-boot", "50"])
-    assert rc == 2
-    assert "sin pesos en la bitácora: peso_kg, peso_lb1 y peso_lb2 vacíos en las 40 filas" in capsys.readouterr().err
-    assert not out.exists() or not any(out.iterdir())
+    code = ev.main(["--bitacora", str(tmp_path / "bitacora.csv"), "--medidas", str(tmp_path / "medidas.csv"),
+                    "--pesos", str(tmp_path / "pesos.csv"), "--out", str(out)])
+    assert code == 0
+    rep = json.loads((out / "evaluacion.json").read_text())
+    assert rep["primary"]["metricas"]["n_animales"] == 10  # 12 animales, uno sin peso y uno sin fotografía aceptada
+    assert rep["secondary_median5"]["metricas"]["n_animales"] == 10
+    assert {e["motivo"] for e in rep["exclusions"]} == {"sin_fotografia_aceptada", "sin_peso"}
+    assert [(s["fila"], s["foto"], s["rango_3m"]) for s in rep["substitutions"]] == [("2", "S_2_1.jpg", 2)]
+    assert rep["selected_photos"]["2"] == "S_2_1.jpg" and rep["selected_photos"]["1"] == "S_1_0.jpg"
+    assert rep["primary"]["modelo"]["b"] == pytest.approx(0.7, abs=0.05)  # ley 0.4·A^0.7 con ruido lognormal
+    bundle = json.loads((out / "weight_model.json").read_text())
+    golden = json.loads((out / "golden_cases.json").read_text())
+    assert bundle["interval"]["kind"] == "loglog_prediction" and golden["modelo"] == bundle["version"]
+    for caso in golden["casos"]:
+        p, lo, hi = ev.predict(bundle, caso["area_cm2"])
+        assert float(p) == pytest.approx(caso["peso_esperado_kg"], abs=1e-9)
+        assert float(lo) == pytest.approx(caso["limite_inferior_kg"], abs=1e-9)
+        assert float(hi) == pytest.approx(caso["limite_superior_kg"], abs=1e-9)
+    with pytest.raises(ValueError):  # no sobreescribe evidencia
+        ev.main(["--bitacora", str(tmp_path / "bitacora.csv"), "--medidas", str(tmp_path / "medidas.csv"),
+                 "--pesos", str(tmp_path / "pesos.csv"), "--out", str(out)])
 
 
-def test_campana_sintetica_recupera_modelo_y_escribe_metricas(tmp_path):
-    features, bitacora = _campana_sintetica(tmp_path, con_pesos=True)
-    out = tmp_path / "salida"
-    rc = ev.main(["--features", str(features), "--bitacora", str(bitacora), "--out", str(out), "--n-boot", "200"])
-    assert rc == 0
-    for nombre in ("resultados_loo.csv", "metricas.json", "pred_vs_real.png"):
-        assert (out / nombre).is_file(), nombre
+def test_identidad_inconsistente_detiene(tmp_path):
+    _campana_sintetica(tmp_path)
+    rows = list(csv.DictReader((tmp_path / "medidas.csv").open(encoding="utf-8")))
+    rows[0]["nombre"] = "OTRA"
+    _escribir(tmp_path / "medidas.csv", rows, list(rows[0]))
+    with pytest.raises(ValueError):
+        ev.main(["--bitacora", str(tmp_path / "bitacora.csv"), "--medidas", str(tmp_path / "medidas.csv"),
+                 "--pesos", str(tmp_path / "pesos.csv"), "--out", str(tmp_path / "s")])
 
-    m = json.loads((out / "metricas.json").read_text(encoding="utf-8"))
-    assert CLAVES_CONTRATO <= set(m)
-    assert m["n"] == 40 and m["n_fotos"] == 200 and m["seleccion"] == "seleccionada_3m"
 
-    # el peso se generó con el área cruda: ese modelo (principal o alternativa) recupera a = 0.4 y b = 0.7
-    crudo = m if m["area"] == "lateral_area_cm2" else m["alternativa"]
-    assert crudo["area"] == "lateral_area_cm2"
-    assert crudo["a"] == pytest.approx(0.4, rel=0.10)
-    assert crudo["b"] == pytest.approx(0.7, rel=0.10)
-    assert m["mape_ic95"][0] <= m["mape"] <= m["mape_ic95"][1]
-    assert m["factor_ip"] == pytest.approx(np.exp(m["t"] * m["sigma_log"] * np.sqrt(1 + 1 / m["n"])), rel=1e-3)
-
-    pliegue = m["mape_pliegue_distancia"]
-    assert {"2.5", "3.5", "n_2.5", "n_3.5"} <= set(pliegue)
-    assert pliegue["n_2.5"] == 40 and pliegue["n_3.5"] == 40
-    assert pliegue["2.5"] is not None and pliegue["3.5"] is not None
-    assert 0 < m["icc_repetibilidad"] <= 1
-    assert m["bland_altman"] is None
-
-    loo = pd.read_csv(out / "resultados_loo.csv")
-    assert list(loo.columns) == ["fila", "nombre", "peso_kg", "pred_kg", "ape_pct", "modelo"]
-    assert len(loo) == 40
-    assert set(loo["modelo"]) == {f"alometrico_{m['area']}"}
+def test_campana_reproduce_el_bundle_de_la_app(tmp_path):
+    out = tmp_path / "campana"
+    assert ev.main(["--out", str(out)]) == 0
+    bundle = json.loads((out / "weight_model.json").read_text())
+    app = json.loads((APP_BUNDLE / "weight_model.json").read_text())
+    assert bundle["version"] == app["version"]
+    assert bundle["a"] == pytest.approx(app["a"], abs=1e-12) and bundle["b"] == pytest.approx(app["b"], abs=1e-12)
+    for k, v in app["interval"].items():
+        assert bundle["interval"][k] == (pytest.approx(v, abs=1e-12) if isinstance(v, float) else v)
+    golden = json.loads((out / "golden_cases.json").read_text())
+    app_golden = json.loads((APP_BUNDLE / "golden_cases.json").read_text())
+    assert [c["area_cm2"] for c in golden["casos"]] == pytest.approx([c["area_cm2"] for c in app_golden["casos"]], abs=1e-9)
+    assert [c["peso_esperado_kg"] for c in golden["casos"]] == pytest.approx([c["peso_esperado_kg"] for c in app_golden["casos"]], abs=1e-9)
+    rep = json.loads((out / "evaluacion.json").read_text())
+    m = rep["primary"]["metricas"]
+    assert m["n_animales"] == 40 and m["mape_pct"] == pytest.approx(7.7233, abs=1e-3)
+    assert [s["fila"] for s in rep["substitutions"]] == ["7"] and rep["exclusions"] == []
+    assert m["h1a_mape_menor_10"] and m["h1a_ic95_superior_menor_10"]

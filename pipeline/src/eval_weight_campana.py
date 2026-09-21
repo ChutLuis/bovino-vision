@@ -1,421 +1,446 @@
-"""Ajuste y validación del modelo alométrico de peso con la campaña de calibración.
+"""Evaluación preespecificada del modelo alométrico de peso con la campaña de calibración.
 
-Unidad de análisis: la vaca. Cada animal aporta la mediana de sus fotos seleccionadas a 3 m
-(`seleccionada_3m == 1`; con `--todas`, todas las fotos con `estado == ok`) y un peso de
-referencia tomado de la bitácora (`peso_kg`, o la media de `peso_lb1`/`peso_lb2` × 0.45359237).
+Protocolo, fijado antes de recibir los pesos:
 
-Se evalúan las dos áreas laterales del CSV de medidas (`lateral_area_cm2` cruda y
-`lateral_area_cm2_corr`, corregida por paralaje). El modelo principal es el de menor MAPE en
-validación cruzada dejando una vaca fuera (LOO); el otro se reporta como `alternativa`.
+- Unidad de análisis: el animal. Una fotografía por animal: la primaria (la aceptada más cercana a 3.0 m,
+  `primaria == 1` en `medidas_app_3m_20260912.csv`) o, si la ruta de la aplicación la rechazó, la siguiente
+  fotografía aceptada del orden de preselección (`rango_3m`). Entran los 40 animales con referencia.
+- Predictor: área lateral cruda en cm² medida por la ruta de la aplicación (jpeg-js, LiteRT FP32, `segment.ts`,
+  js-aruco2), sin corrección por distancia.
+- Modelo: ln W = ln a + b·ln A por mínimos cuadrados. Validación leave-one-out por animal; IC95 del MAPE por
+  bootstrap de animales (B = 2000, semilla fija); intervalo de predicción al 95 % en escala logarítmica con el
+  término de apalancamiento (`loglog_prediction`, el esquema que consume la aplicación).
+- Secundarios, que no eligen el modelo: mediana de las fotografías aceptadas por animal, AIC del área frente a
+  área + ancho + alto de la caja, repetibilidad entre fotografías (ICC(1) del log del área, CV del peso predicho).
 
-Métricas sobre las n predicciones LOO agrupadas: MAPE con IC 95 % bootstrap por vaca, R², RMSE y
-MAE en kg. Del ajuste completo salen el intervalo de predicción log-log (`sigma_log`, `t`, `factor_ip`),
-el AIC del alométrico y del multivariado (log área, longitud, altura, distancia), la robustez por
-nivel de distancia (ajusta a 3.0 m, predice a 2.5 y 3.5 m), la repetibilidad entre fotos (ICC(1) del
-log del peso predicho por foto, CV intra-vaca) y, si la bitácora trae dos pesadas, Bland–Altman.
+Referencias: `pesos_20260920.csv` (fila, nombre, arete, peso_lb, fecha_pesaje, instrumento, fuente y, si la hay,
+`peso_lb2`). Identidad validada contra la bitácora de la campaña. Escribe en `--out` (que no debe existir):
+`evaluacion.json`, `predicciones_loo.csv`, `pred_vs_real.png`, `resumen.md` y, si a > 0 y b > 0,
+`weight_model.json` y `golden_cases.json` listos para `app/assets/model_bundle/`.
 
-Salidas en `--out`: `resultados_loo.csv`, `metricas.json`, `pred_vs_real.png`. Sin pesos en la
-bitácora no escribe nada y termina con código 2.
-
-    python src/eval_weight_campana.py
-    python src/eval_weight_campana.py --todas --out /ruta/salida
+    python src/eval_weight_campana.py --out ../informes/campana_20260912/peso
 """
 from __future__ import annotations
 
 import argparse
+import csv
+import datetime
+import hashlib
 import json
+import math
 import sys
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
-from scipy import stats
-from sklearn.metrics import r2_score
+from scipy.stats import t as tdist
 
-PIPELINE = Path(__file__).resolve().parents[1]
-DATOS = PIPELINE / "data" / "field" / "campana_20260912"
-FEATURES_DEFAULT = DATOS / "features_campana_20260912.csv"
-BITACORA_DEFAULT = DATOS / "bitacora_campana_20260912.csv"
-OUT_DEFAULT = PIPELINE.parent / "informes" / "campana_20260912"
-
-LB_A_KG = 0.45359237
-AREAS = ("lateral_area_cm2", "lateral_area_cm2_corr")
-COVARIABLES = ("body_length_cm", "height_cm", "distancia_m")
-NIVELES_PLIEGUE = (2.5, 3.5)
-NIVEL_AJUSTE = 3.0
+ROOT = Path(__file__).resolve().parents[1]
+DATA = ROOT / "data/field/campana_20260912"
+MEDIDAS_DEFAULT = DATA / "medidas_app_3m_20260912.csv"
+PESOS_DEFAULT = DATA / "pesos_20260920.csv"
+BITACORA_DEFAULT = DATA / "bitacora_campana_20260912.csv"
+PHOTO_DATE = datetime.date(2026, 9, 12)
+SEED = 20260919
+B_BOOT = 2000
+LB = 0.45359237
+RUTA_MEDIDA = "jpeg-js/image.ts + LiteRT FP32 (PC) + segment.ts + js-aruco2; área cruda, sin corrección por distancia"
 
 
-# ----------------------------------------------------------------------------- funciones base
-
-def ajustar_loglog(area, peso):
-    """Ajusta log(peso) = log(a) + b·log(area) por mínimos cuadrados y devuelve (a, b)."""
-    area = np.asarray(area, float)
-    peso = np.asarray(peso, float)
-    b, intercepto = np.polyfit(np.log(area), np.log(peso), 1)
-    return float(np.exp(intercepto)), float(b)
+def leer_csv(path: Path) -> list[dict[str, str]]:
+    with Path(path).open(encoding="utf-8-sig", newline="") as f:
+        return list(csv.DictReader(f))
 
 
-def predecir_loglog(a, b, area):
-    return a * np.power(np.asarray(area, float), b)
+def sha256(path: Path) -> str:
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def loo_loglog(area, peso):
-    """Predicción LOO: cada vaca se predice con el alométrico ajustado sobre las demás."""
-    area = np.asarray(area, float)
-    peso = np.asarray(peso, float)
-    n = len(peso)
-    pred = np.zeros(n)
-    for i in range(n):
-        tr = np.arange(n) != i
-        a, b = ajustar_loglog(area[tr], peso[tr])
-        pred[i] = predecir_loglog(a, b, area[i])
-    return pred
-
-
-def mape(y, p):
-    """Error porcentual absoluto medio, en %."""
-    y = np.asarray(y, float)
-    p = np.asarray(p, float)
-    return float(np.mean(np.abs((y - p) / y)) * 100)
-
-
-def ic_bootstrap_mape(y, p, n_boot=2000, seed=0):
-    """IC 95 % del MAPE por bootstrap de vacas (percentiles 2.5 y 97.5) → (lo, hi)."""
-    y = np.asarray(y, float)
-    p = np.asarray(p, float)
-    rng = np.random.default_rng(seed)
-    n = len(y)
-    idx = rng.integers(0, n, size=(n_boot, n))
-    vals = np.mean(np.abs((y[idx] - p[idx]) / y[idx]), axis=1) * 100
-    lo, hi = np.percentile(vals, [2.5, 97.5])
-    return float(lo), float(hi)
-
-
-def intervalo_prediccion(area, peso):
-    """Intervalo de predicción 95 % del alométrico en escala log para un animal nuevo.
-
-    sigma_log = sqrt(RSS / (n − 2)) del ajuste completo; t = t_{0.975, n−2};
-    factor = exp(t · sigma_log · sqrt(1 + 1/n)). Uso: [pred / factor, pred × factor].
-    """
-    area = np.asarray(area, float)
-    peso = np.asarray(peso, float)
-    n = len(peso)
-    a, b = ajustar_loglog(area, peso)
-    resid = np.log(peso) - (np.log(a) + b * np.log(area))
-    sigma_log = float(np.sqrt(np.sum(resid**2) / (n - 2)))
-    t = float(stats.t.ppf(0.975, n - 2))
-    factor = float(np.exp(t * sigma_log * np.sqrt(1 + 1 / n)))
-    return {"sigma_log": sigma_log, "t": t, "n": int(n), "factor": factor}
-
-
-def _ols(X, y):
-    """Mínimos cuadrados con intercepto; devuelve (coeficientes, RSS). El primer coeficiente es el intercepto."""
-    X = np.atleast_2d(np.asarray(X, float))
-    if X.shape[0] != len(y):
-        X = X.T
-    D = np.column_stack([np.ones(len(y)), X])
-    coef, *_ = np.linalg.lstsq(D, np.asarray(y, float), rcond=None)
-    rss = float(np.sum((np.asarray(y, float) - D @ coef) ** 2))
-    return coef, rss
-
-
-def aic_ols(X, y) -> float:
-    """AIC = n·ln(RSS/n) + 2k de la regresión OLS de y sobre las columnas de X más intercepto (k = p + 1)."""
-    X = np.atleast_2d(np.asarray(X, float))
-    if X.shape[0] != len(y):
-        X = X.T
-    n = len(y)
-    _, rss = _ols(X, y)
-    k = X.shape[1] + 1
-    return float(n * np.log(rss / n) + 2 * k)
-
-
-def icc1(grupos, valores) -> float:
-    """ICC(1) por ANOVA de una vía (acuerdo entre medidas repetidas de un mismo grupo).
-
-    MSB = SSB/(k−1), MSW = SSW/(N−k), n0 = (N − Σn_i²/N)/(k−1);
-    ICC(1) = (MSB − MSW) / (MSB + (n0 − 1)·MSW). Admite grupos de tamaño distinto.
-    """
-    df = pd.DataFrame({"g": np.asarray(grupos), "v": np.asarray(valores, float)}).dropna()
-    N = len(df)
-    k = df["g"].nunique()
-    if k < 2 or N <= k:
-        return float("nan")
-    media = df["v"].mean()
-    por_grupo = df.groupby("g")["v"].agg(["size", "mean"])
-    ssb = float(np.sum(por_grupo["size"] * (por_grupo["mean"] - media) ** 2))
-    ssw = float(np.sum((df["v"] - df.groupby("g")["v"].transform("mean")) ** 2))
-    msb = ssb / (k - 1)
-    msw = ssw / (N - k)
-    n0 = (N - np.sum(por_grupo["size"] ** 2) / N) / (k - 1)
-    return float((msb - msw) / (msb + (n0 - 1) * msw))
-
-
-# ----------------------------------------------------------------------------- datos
-
-def peso_referencia(bitacora: pd.DataFrame) -> pd.Series:
-    """Peso por fila: `peso_kg` o, si falta, la media de `peso_lb1`/`peso_lb2` presentes × 0.45359237."""
-    kg = pd.to_numeric(bitacora["peso_kg"], errors="coerce")
-    lb = bitacora[["peso_lb1", "peso_lb2"]].apply(pd.to_numeric, errors="coerce")
-    desde_lb = lb.mean(axis=1, skipna=True) * LB_A_KG
-    return kg.where(kg.notna(), desde_lb)
-
-
-def leer_bitacora(ruta: Path) -> pd.DataFrame:
-    b = pd.read_csv(ruta, dtype=str, keep_default_na=False)
-    b = b.replace("", np.nan)
-    b["fila"] = pd.to_numeric(b["fila"], errors="coerce").astype("Int64")
-    b["peso_ref_kg"] = peso_referencia(b)
-    return b
-
-
-def leer_features(ruta: Path) -> pd.DataFrame:
-    f = pd.read_csv(ruta, dtype={"arete": str, "estado": str, "foto": str, "nombre": str})
-    f["fila"] = pd.to_numeric(f["fila"], errors="coerce").astype("Int64")
-    for c in AREAS + COVARIABLES + ("nivel_distancia", "seleccionada_3m"):
-        f[c] = pd.to_numeric(f[c], errors="coerce")
-    return f
-
-
-def filas_seleccionadas(f: pd.DataFrame, todas: bool) -> pd.DataFrame:
-    ok = f[f["estado"] == "ok"]
-    if todas:
-        return ok
-    return ok[ok["seleccionada_3m"] == 1]
-
-
-def medianas_por_vaca(filas: pd.DataFrame) -> pd.DataFrame:
-    cols = list(AREAS + COVARIABLES)
-    g = filas.groupby("fila")
-    med = g[cols].median()
-    med["n_fotos"] = g.size()
-    return med.reset_index()
-
-
-def bland_altman(bitacora: pd.DataFrame):
-    """Concordancia entre las dos pesadas de la bitácora, en kg; None si hay menos de dos vacas con ambas."""
-    lb = bitacora[["peso_lb1", "peso_lb2"]].apply(pd.to_numeric, errors="coerce").dropna()
-    if len(lb) < 2:
-        return None
-    d = (lb["peso_lb1"] - lb["peso_lb2"]).to_numpy(float) * LB_A_KG
-    bias = float(np.mean(d))
-    sd = float(np.std(d, ddof=1))
-    return {"n": int(len(d)), "bias_kg": round(bias, 1), "sd_kg": round(sd, 1),
-            "loa": [round(bias - 1.96 * sd, 1), round(bias + 1.96 * sd, 1)]}
-
-
-# ----------------------------------------------------------------------------- evaluación
-
-def evaluar_alometrico(area, peso, n_boot, seed):
-    pred = loo_loglog(area, peso)
-    a, b = ajustar_loglog(area, peso)
-    lo, hi = ic_bootstrap_mape(peso, pred, n_boot=n_boot, seed=seed)
-    ip = intervalo_prediccion(area, peso)
+# ----------------------------------------------------------------------------- modelo
+def fit(area, weight) -> dict:
+    """Ajuste log-log por mínimos cuadrados con los parámetros del intervalo de predicción."""
+    x = np.log(np.asarray(area, float))
+    y = np.log(np.asarray(weight, float))
+    n = len(x)
+    if n < 3 or not np.isfinite(x).all() or not np.isfinite(y).all():
+        raise ValueError("el ajuste requiere al menos 3 pares positivos y finitos")
+    sxx = float(np.sum((x - x.mean()) ** 2))
+    if sxx <= 1e-12:
+        raise ValueError("sin variación suficiente del log del área")
+    b = float(np.dot(x - x.mean(), y - y.mean()) / sxx)
+    intercept = float(y.mean() - b * x.mean())
+    residual = y - (intercept + b * x)
+    sigma = float(np.sqrt(np.dot(residual, residual) / (n - 2)))
     return {
-        "a": a, "b": b, "pred": pred,
-        "mape": mape(peso, pred), "mape_ic95": [lo, hi],
-        "r2": float(r2_score(peso, pred)),
-        "rmse": float(np.sqrt(np.mean((peso - pred) ** 2))),
-        "mae": float(np.mean(np.abs(peso - pred))),
-        "sigma_log": ip["sigma_log"], "t": ip["t"], "factor_ip": ip["factor"],
-        "aic_alometrico": aic_ols(np.log(area), np.log(peso)),
+        "a": math.exp(intercept),
+        "b": b,
+        "interval": {
+            "kind": "loglog_prediction", "level": 0.95, "n": n,
+            "x_mean": float(x.mean()), "sxx": sxx, "sigma_log": sigma,
+            "t_critical": float(tdist.ppf(0.975, n - 2)),
+            "area_min": float(np.min(area)), "area_max": float(np.max(area)),
+        },
     }
 
 
-def loo_multivariado(X, peso):
-    """LOO del OLS log(peso) ~ columnas de X (log área y covariables), predicción en kg."""
-    n = len(peso)
-    logy = np.log(peso)
-    pred = np.zeros(n)
-    for i in range(n):
-        tr = np.arange(n) != i
-        coef, _ = _ols(X[tr], logy[tr])
-        pred[i] = np.exp(coef[0] + X[i] @ coef[1:])
-    return pred
+def predict(model: dict, area):
+    """Peso puntual y límites del intervalo de predicción al 95 %."""
+    area = np.asarray(area, float)
+    pred = model["a"] * area ** model["b"]
+    iv = model["interval"]
+    half = iv["t_critical"] * iv["sigma_log"] * np.sqrt(1 + 1 / iv["n"] + (np.log(area) - iv["x_mean"]) ** 2 / iv["sxx"])
+    return pred, pred * np.exp(-half), pred * np.exp(half)
 
 
-def pliegue_distancia(f_ok: pd.DataFrame, pesos: pd.Series, area: str):
-    """Ajusta con la mediana por vaca a 3.0 m y predice con la mediana por vaca a 2.5 y 3.5 m."""
-    def mediana_nivel(nivel):
-        sub = f_ok[np.isclose(f_ok["nivel_distancia"].astype(float), nivel)]
-        med = sub.groupby("fila")[area].median()
-        med = med[med.index.isin(pesos.index)].dropna()
-        return med
-    ajuste = mediana_nivel(NIVEL_AJUSTE)
-    out = {}
-    if len(ajuste) < 3:
-        for nivel in NIVELES_PLIEGUE:
-            out[f"{nivel}"] = None
-            out[f"n_{nivel}"] = 0
-        return out
-    a, b = ajustar_loglog(ajuste.to_numpy(), pesos.loc[ajuste.index].to_numpy())
-    for nivel in NIVELES_PLIEGUE:
-        med = mediana_nivel(nivel)
-        if len(med) == 0:
-            out[f"{nivel}"] = None
-        else:
-            out[f"{nivel}"] = round(mape(pesos.loc[med.index].to_numpy(), predecir_loglog(a, b, med.to_numpy())), 2)
-        out[f"n_{nivel}"] = int(len(med))
+def metrics(y, pred, lo, hi) -> dict:
+    y = np.asarray(y, float)
+    pred = np.asarray(pred, float)
+    ape = np.abs(pred - y) / y * 100
+    rng = np.random.default_rng(SEED)
+    boot = ape[rng.integers(0, len(y), (B_BOOT, len(y)))].mean(axis=1)
+    denom = float(np.sum((y - y.mean()) ** 2))
+    return {
+        "n_animales": int(len(y)),
+        "mape_pct": float(ape.mean()),
+        "mape_ic95_pct": np.quantile(boot, [0.025, 0.975]).tolist(),
+        "mae_kg": float(np.abs(pred - y).mean()),
+        "rmse_kg": float(np.sqrt(np.mean((pred - y) ** 2))),
+        "r2": float(1 - np.sum((pred - y) ** 2) / denom) if denom > 0 else None,
+        "ip95_cobertura_loo": float(np.mean((y >= lo) & (y <= hi))),
+        "h1a_mape_menor_10": bool(ape.mean() < 10),
+        "h1a_ic95_superior_menor_10": bool(np.quantile(boot, 0.975) < 10),
+        "bootstrap_B": B_BOOT,
+        "seed": SEED,
+    }
+
+
+def evaluate(area, y, ids: list[str]) -> dict:
+    """Leave-one-out por animal: cada pliegue reajusta a, b y el intervalo sin el animal evaluado."""
+    area = np.asarray(area, float)
+    y = np.asarray(y, float)
+    if len(area) < 4:
+        raise ValueError("se requieren al menos 4 animales para LOO con intervalo estimable")
+    pred, lo, hi, folds = [], [], [], []
+    for i in range(len(area)):
+        train = np.arange(len(area)) != i
+        m = fit(area[train], y[train])
+        p, l, h = predict(m, area[i])
+        pred.append(float(p))
+        lo.append(float(l))
+        hi.append(float(h))
+        folds.append({"animal_test": ids[i], "animales_train": [ids[j] for j in range(len(ids)) if j != i], "modelo": m})
+    return {
+        "metricas": metrics(y, pred, lo, hi),
+        "modelo": fit(area, y),
+        "pliegues": folds,
+        "predicciones": [
+            {"fila": ids[i], "area_cm2": float(area[i]), "peso_ref_kg": float(y[i]), "pred_loo_kg": pred[i],
+             "ip95_lo_kg": lo[i], "ip95_hi_kg": hi[i], "ape_pct": abs(pred[i] - y[i]) / y[i] * 100}
+            for i in range(len(ids))
+        ],
+    }
+
+
+def compare_aic(features, y) -> dict:
+    """AIC gaussiano del área sola frente a área + ancho + alto de la caja; comparación, no selector."""
+    y = np.log(np.asarray(y, float))
+    x = np.asarray(features, float)
+    if not np.isfinite(x).all() or np.any(x <= 0):
+        return {"status": "no_evaluable_covariables"}
+    out = {"status": "ok", "covariables": ["log_area_cm2", "log_ancho_bbox_cm", "log_alto_bbox_cm"], "selecciona_bundle": False}
+    for name, columns in [("area", x[:, :1]), ("multivariado_bbox", x)]:
+        X = np.column_stack([np.ones(len(y)), np.log(columns)])
+        if len(y) <= X.shape[1] + 1 or np.linalg.matrix_rank(X) < X.shape[1]:
+            out[name] = {"status": "rango_insuficiente"}
+            continue
+        coef = np.linalg.lstsq(X, y, rcond=None)[0]
+        rss = float(np.sum((y - X @ coef) ** 2))
+        k = X.shape[1] + 1
+        if rss <= 0:
+            out[name] = {"status": "residuo_cero"}
+            continue
+        out[name] = {"status": "ok", "aic": len(y) * (math.log(2 * math.pi) + 1 + math.log(rss / len(y))) + 2 * k,
+                     "k_incluye_varianza": k, "n": int(len(y))}
+    if all(out[n].get("status") == "ok" for n in ["area", "multivariado_bbox"]):
+        out["delta_aic_multi_menos_area"] = out["multivariado_bbox"]["aic"] - out["area"]["aic"]
     return out
 
 
-def repetibilidad(filas: pd.DataFrame, a: float, b: float, area: str):
-    """ICC(1) del log del peso predicho por foto entre vacas y mediana del CV intra-vaca del peso predicho."""
-    sub = filas.dropna(subset=[area])
-    pred = predecir_loglog(a, b, sub[area].to_numpy())
-    icc = icc1(sub["fila"].to_numpy(), np.log(pred))
-    df = pd.DataFrame({"fila": sub["fila"].to_numpy(), "pred": pred})
-    g = df.groupby("fila")["pred"]
-    cv = (g.std(ddof=1) / g.mean() * 100).dropna()
-    cv_med = float(cv.median()) if len(cv) else float("nan")
-    return icc, cv_med
+# ----------------------------------------------------------------------------- referencias
+def leer_pesos(path: Path, identidades: dict[str, dict[str, str]]) -> tuple[dict, list[str]]:
+    """Lee las referencias y valida identidad, unidad, fecha y procedencia. Devuelve (válidas, sin peso)."""
+    seen, valid, missing, errors = set(), {}, [], []
+    for r in leer_csv(path):
+        fid = r.get("fila", "").strip()
+        if fid in seen:
+            errors.append(f"fila duplicada: {fid}")
+            continue
+        seen.add(fid)
+        if fid not in identidades:
+            errors.append(f"fila desconocida: {fid}")
+            continue
+        for k in ("nombre", "arete"):
+            if r.get(k, "").strip() != identidades[fid][k]:
+                errors.append(f"fila {fid}: {k} '{r.get(k, '')}' no coincide con la bitácora '{identidades[fid][k]}'")
+        if not r.get("peso_lb", "").strip():
+            missing.append(fid)
+            continue
+        try:
+            w = float(r["peso_lb"])
+            if not math.isfinite(w) or w <= 0:
+                raise ValueError("peso no positivo o no finito")
+            date = datetime.date.fromisoformat(r.get("fecha_pesaje", "").strip())
+            if date > datetime.date.today():
+                raise ValueError("fecha de pesaje futura")
+            if not r.get("fuente", "").strip():
+                raise ValueError("falta la fuente de la lectura")
+            second = r.get("peso_lb2", "").strip()
+            w2 = float(second) if second else None
+            if w2 is not None and (not math.isfinite(w2) or w2 <= 0):
+                raise ValueError("segunda lectura inválida")
+            valid[fid] = {
+                **r,
+                "peso_ref_kg": LB * (w if w2 is None else (w + w2) / 2),
+                "lectura1_kg": w * LB, "lectura2_kg": None if w2 is None else w2 * LB,
+                "instrumento": r.get("instrumento", "").strip() or "no informado",
+            }
+        except (ValueError, KeyError) as e:
+            errors.append(f"fila {fid}: {e}")
+    missing += sorted(set(identidades) - seen, key=int)
+    if errors:
+        raise ValueError("\n".join(errors))
+    return valid, sorted(missing, key=int)
 
 
-def redondear_alometrico(r: dict) -> dict:
-    return {
-        "a": round(r["a"], 4), "b": round(r["b"], 4),
-        "mape": round(r["mape"], 2), "mape_ic95": [round(r["mape_ic95"][0], 2), round(r["mape_ic95"][1], 2)],
-        "r2": round(r["r2"], 4), "rmse": round(r["rmse"], 1), "mae": round(r["mae"], 1),
-        "sigma_log": round(r["sigma_log"], 4), "t": round(r["t"], 3), "factor_ip": round(r["factor_ip"], 4),
-        "aic_alometrico": round(r["aic_alometrico"], 1),
+def seleccionar_fotos(medidas: list[dict[str, str]], animales: list[str]) -> tuple[dict, list[dict]]:
+    """Una fotografía por animal: la primaria si la ruta la aceptó; si no, la siguiente aceptada del orden de
+    preselección (`rango_3m`). Devuelve (fila -> medida, sustituciones)."""
+    aceptada = lambda m: m["estado"] == "ok" and m["revision_visual"] == "aceptar" and m["area_cm2"].strip()  # noqa: E731
+    seleccion, sustituciones = {}, []
+    for fid in animales:
+        fotos = sorted((m for m in medidas if m["fila"] == fid), key=lambda m: int(m["rango_3m"]))
+        primaria = [m for m in fotos if m["primaria"] == "1"]
+        if len(primaria) != 1:
+            raise ValueError(f"fila {fid}: debe tener exactamente una fotografía primaria")
+        if aceptada(primaria[0]):
+            seleccion[fid] = primaria[0]
+            continue
+        siguiente = next((m for m in fotos if aceptada(m)), None)
+        if siguiente is None:
+            continue
+        motivo = primaria[0]["estado"] if primaria[0]["estado"] != "ok" else primaria[0]["revision_visual"]
+        seleccion[fid] = siguiente
+        sustituciones.append({"fila": fid, "foto_primaria": primaria[0]["foto"], "motivo_primaria": motivo,
+                              "foto": siguiente["foto"], "rango_3m": int(siguiente["rango_3m"])})
+    return seleccion, sustituciones
+
+
+def version_desde_ajuste(refs: dict, seleccion: dict, ids: list[str]) -> str:
+    """Identificador del ajuste: digest de las referencias (fila y libras) y de las fotografías que entran
+    (fila, sha256 de la fotografía). Cambia si cambia un peso o una fotografía; no depende del formato."""
+    lineas = "\n".join(f"{fid},{refs[fid]['peso_lb'].strip()},{seleccion[fid].get('sha256_foto', seleccion[fid]['foto']).strip()}"
+                       for fid in sorted(ids, key=int))
+    return "campana-" + hashlib.sha256(lineas.encode()).hexdigest()[:12]
+
+
+def golden_desde_bundle(bundle: dict, area_min: float, area_max: float, n: int = 10) -> dict:
+    grid = np.geomspace(area_min, area_max, n)
+    casos = []
+    for i, area in enumerate(grid):
+        pred, lo, hi = predict(bundle, area)
+        casos.append({"foto": f"golden-{i}", "area_cm2": float(area), "peso_esperado_kg": float(pred),
+                      "limite_inferior_kg": float(lo), "limite_superior_kg": float(hi)})
+    return {"modelo": bundle["version"], "a": bundle["a"], "b": bundle["b"], "tolerancia_kg": 1e-8,
+            "fuente": "Contrato matemático del bundle; sin fotografías ni referencias adicionales", "casos": casos}
+
+
+# ----------------------------------------------------------------------------- resumen
+def texto_resumen(report: dict, bundle: dict | None, refs: dict) -> str:
+    p = report["primary"]["metricas"]
+    s = report["secondary_median5"]["metricas"]
+    m = report["primary"]["modelo"]
+    fechas = sorted({refs[f]["fecha_pesaje"] for f in refs})
+    instrumentos = sorted({refs[f]["instrumento"] for f in refs})
+    excl = "; ".join(f"fila {e['fila']} ({e['motivo']})" for e in report["exclusions"]) or "ninguna"
+    sust = "; ".join(f"fila {s['fila']} ({s['motivo_primaria']} en la primaria; entra `{s['foto']}`, orden {s['rango_3m']})"
+                     for s in report["substitutions"]) or "ninguna"
+    lineas = [
+        "# Modelo de peso de la campaña de calibración",
+        "",
+        f"Referencias: {len(refs)} animales, {', '.join(instrumentos)}, fecha {', '.join(fechas)}; fotografías del "
+        f"{PHOTO_DATE.isoformat()}. Una fotografía por animal: la primaria o, si la ruta la rechazó, la siguiente aceptada "
+        f"del orden de preselección. Sustituciones: {sust}. Exclusiones: {excl}.",
+        "",
+        "| Análisis | n | MAPE % | IC95 % | MAE kg | RMSE kg | R² | Cobertura IP95 |",
+        "|---|---|---|---|---|---|---|---|",
+        f"| Una fotografía por animal (primario) | {p['n_animales']} | {p['mape_pct']:.2f} | [{p['mape_ic95_pct'][0]:.2f}, {p['mape_ic95_pct'][1]:.2f}] | {p['mae_kg']:.1f} | {p['rmse_kg']:.1f} | {p['r2']:.2f} | {p['ip95_cobertura_loo']*100:.1f} % |",
+        f"| Mediana de las fotografías aceptadas por animal (secundario) | {s['n_animales']} | {s['mape_pct']:.2f} | [{s['mape_ic95_pct'][0]:.2f}, {s['mape_ic95_pct'][1]:.2f}] | {s['mae_kg']:.1f} | {s['rmse_kg']:.1f} | {s['r2']:.2f} | {s['ip95_cobertura_loo']*100:.1f} % |",
+        "",
+        f"H1a (MAPE < 10 %): valor puntual {'sí' if p['h1a_mape_menor_10'] else 'no'}; límite superior del IC95 "
+        f"{'sí' if p['h1a_ic95_superior_menor_10'] else 'no'}.",
+        "",
+        f"Ajuste completo del primario: a = {m['a']:.10g}, b = {m['b']:.10g}; σ_log = {m['interval']['sigma_log']:.4f}, "
+        f"t = {m['interval']['t_critical']:.4f}, rango de calibración {m['interval']['area_min']:.0f}–{m['interval']['area_max']:.0f} cm².",
+    ]
+    aic = report["aic_secundario"]
+    if aic.get("status") == "ok" and "delta_aic_multi_menos_area" in aic:
+        lineas.append(f"AIC área {aic['area']['aic']:.1f} frente a área + caja {aic['multivariado_bbox']['aic']:.1f} "
+                      f"(Δ = {aic['delta_aic_multi_menos_area']:.1f}); comparación secundaria, no elige el bundle.")
+    rep = report["repeatability"]
+    if rep["icc1_log_area"] is not None:
+        cvs = [c["cv_pct"] for c in rep["cv_por_animal"]]
+        lineas.append(f"Repetibilidad entre fotografías del mismo animal: ICC(1) del log del área {rep['icc1_log_area']:.3f}; "
+                      f"CV del peso predicho mediana {np.median(cvs):.2f} %, máximo {max(cvs):.2f} %.")
+    if bundle is not None:
+        lineas += ["", f"Bundle `{bundle['version']}` escrito con `golden_cases.json` (10 casos, tolerancia 1e-8 kg)."]
+    lineas += ["", "Alcance: validación interna por animal en un hato y un protocolo de captura; la referencia es cinta "
+               "bovinométrica, no báscula. Archivos: `evaluacion.json`, `predicciones_loo.csv`, `pred_vs_real.png`."]
+    return "\n".join(lineas) + "\n"
+
+
+# ----------------------------------------------------------------------------- main
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--medidas", type=Path, default=MEDIDAS_DEFAULT, help="CSV de medidas de la ruta de la app (200 fotos a 3 m)")
+    ap.add_argument("--pesos", type=Path, default=PESOS_DEFAULT, help="CSV de referencias por fila")
+    ap.add_argument("--bitacora", type=Path, default=BITACORA_DEFAULT, help="bitácora canónica (fila, nombre, arete)")
+    ap.add_argument("--out", type=Path, required=True, help="directorio de salida; no debe existir")
+    ap.add_argument("--version", default=None, help="identificador del bundle (por defecto, digest de las referencias)")
+    ap.add_argument("--solo-validar", action="store_true", help="valida referencias e identidades y termina")
+    a = ap.parse_args(argv)
+
+    bitacora = {r["fila"].strip(): {"nombre": r["nombre"].strip(), "arete": r["arete"].strip()} for r in leer_csv(a.bitacora)}
+    medidas = leer_csv(a.medidas)
+    for m in medidas:
+        ident = bitacora.get(m["fila"])
+        if ident is None or ident["nombre"] != m["nombre"] or ident["arete"] != m["arete"]:
+            raise ValueError(f"{m['foto']}: identidad de la fila {m['fila']} no coincide con la bitácora")
+    animales = sorted({m["fila"] for m in medidas}, key=int)
+    refs, missing = leer_pesos(a.pesos, {f: bitacora[f] for f in animales})
+    if not refs:
+        print("sin referencias: no se ajusta ni se escribe nada", file=sys.stderr)
+        return 2
+    if a.solo_validar:
+        print(json.dumps({"recibidos": len(refs), "sin_peso": missing}, ensure_ascii=False))
+        return 0
+
+    seleccion, substitutions = seleccionar_fotos(medidas, animales)
+    ids, areas, weights, exclusions = [], [], [], []
+    for fid in animales:
+        if fid not in refs:
+            exclusions.append({"fila": fid, "motivo": "sin_peso"})
+            continue
+        if fid not in seleccion:
+            exclusions.append({"fila": fid, "motivo": "sin_fotografia_aceptada"})
+            continue
+        ids.append(fid)
+        areas.append(float(seleccion[fid]["area_cm2"]))
+        weights.append(refs[fid]["peso_ref_kg"])
+    primary = evaluate(areas, weights, ids)
+
+    covariates = []
+    for fid in ids:
+        m = seleccion[fid]
+        try:
+            s = float(m["cm_per_px"])
+            covariates.append([float(m["area_cm2"]), (float(m["bbox_x1"]) - float(m["bbox_x0"])) * s,
+                               (float(m["bbox_y1"]) - float(m["bbox_y0"])) * s])
+        except ValueError:
+            covariates.append([float(m["area_cm2"]), float("nan"), float("nan")])
+    aic = compare_aic(covariates, weights)
+
+    # Secundarios sobre exactamente los mismos animales para conservar denominadores comparables.
+    aceptadas = {fid: [m for m in medidas if m["fila"] == fid and m["estado"] == "ok" and m["revision_visual"] == "aceptar"] for fid in ids}
+    secondary = evaluate([float(np.median([float(m["area_cm2"]) for m in aceptadas[fid]])) for fid in ids], weights, ids)
+    repeat, cvs = [], []
+    for fid in ids:
+        fold = next(f for f in primary["pliegues"] if f["animal_test"] == fid)
+        vals = []
+        for m in aceptadas[fid]:
+            pred, lo, hi = predict(fold["modelo"], float(m["area_cm2"]))
+            vals.append(float(pred))
+            repeat.append({"fila": fid, "foto": m["foto"], "primaria": m["primaria"] == "1", "area_cm2": float(m["area_cm2"]),
+                           "pred_loo_animal_kg": float(pred), "peso_ref_kg": refs[fid]["peso_ref_kg"], "lo": float(lo), "hi": float(hi)})
+        if len(vals) > 1:
+            cvs.append({"fila": fid, "n": len(vals), "cv_pct": float(np.std(vals, ddof=1) / np.mean(vals) * 100)})
+    groups = [[math.log(float(m["area_cm2"])) for m in aceptadas[fid]] for fid in ids]
+    N, k = sum(map(len, groups)), len(groups)
+    mean = np.mean([v for g in groups for v in g])
+    msb = sum(len(g) * (np.mean(g) - mean) ** 2 for g in groups) / (k - 1)
+    msw = sum(sum((v - np.mean(g)) ** 2 for v in g) for g in groups) / (N - k) if N > k else None
+    n0 = (N - sum(len(g) ** 2 for g in groups) / N) / (k - 1)
+    icc = float((msb - msw) / (msb + (n0 - 1) * msw)) if msw is not None and msb + (n0 - 1) * msw > 0 else None
+
+    paired = [r for r in refs.values() if r["lectura2_kg"] is not None]
+    ba = None
+    if len(paired) >= 2:
+        dif = np.array([r["lectura2_kg"] - r["lectura1_kg"] for r in paired])
+        bias, sd = float(dif.mean()), float(dif.std(ddof=1))
+        ba = {"n": len(dif), "bias_kg": bias, "loa_kg": [bias - 1.96 * sd, bias + 1.96 * sd]}
+
+    def rel(p: Path) -> str:
+        try:
+            return str(p.resolve().relative_to(ROOT.parent))
+        except ValueError:
+            return str(p)
+
+    provenance = {rel(p): sha256(p) for p in [a.pesos, a.medidas, a.bitacora]}
+    version = a.version or version_desde_ajuste(refs, seleccion, ids)
+    bundle = {
+        **primary["modelo"], "version": version,
+        "fuente": f"Campaña {PHOTO_DATE.isoformat()}; una fotografía por animal; LOO por animal, n = {len(ids)}; referencias con fecha declarada",
+        "calibration": {
+            "photo_date": PHOTO_DATE.isoformat(),
+            "reference_dates": sorted({refs[f]["fecha_pesaje"] for f in ids}),
+            "reference_instruments": sorted({refs[f]["instrumento"] for f in ids}),
+            "measurement_route": RUTA_MEDIDA,
+            "animal_ids": ids,
+            "sources": provenance,
+        },
     }
+    deployable = bundle["a"] > 0 and bundle["b"] > 0 and all(math.isfinite(bundle[x]) for x in ["a", "b"])
+    report = {
+        "primary": primary, "secondary_median5": secondary, "exclusions": exclusions, "substitutions": substitutions,
+        "selected_photos": {fid: seleccion[fid]["foto"] for fid in ids},
+        "references": {f: {k: v for k, v in refs[f].items()} for f in refs},
+        "repeated_photo_predictions": repeat, "repeatability": {"icc1_log_area": icc, "cv_por_animal": cvs},
+        "bland_altman": ba, "aic_secundario": aic, "bundle_deployable": deployable, "sources": provenance,
+        "scope": "Validación interna por animal en un hato y un protocolo de captura; referencias con fecha e instrumento declarados. No es validación externa.",
+    }
+    if a.out.exists():
+        raise ValueError(f"el directorio de salida ya existe: {a.out}")
+    a.out.mkdir(parents=True)
+    (a.out / "evaluacion.json").write_text(json.dumps(report, indent=2, ensure_ascii=False, allow_nan=False))
+    with (a.out / "predicciones_loo.csv").open("w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(primary["predicciones"][0]))
+        w.writeheader()
+        w.writerows(primary["predicciones"])
+    if deployable:
+        (a.out / "weight_model.json").write_text(json.dumps(bundle, indent=2, ensure_ascii=False, allow_nan=False))
+        golden = golden_desde_bundle(bundle, min(areas), max(areas))
+        (a.out / "golden_cases.json").write_text(json.dumps(golden, indent=2))
 
-
-def graficar(peso, pred, factor, ruta: Path, titulo: str):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    lo = float(min(peso.min(), pred.min())) * 0.95
-    hi = float(max(peso.max(), pred.max())) * 1.05
-    x = np.linspace(lo, hi, 50)
-    fig, ax = plt.subplots(figsize=(6, 6), dpi=150)
-    ax.fill_between(x, x / factor, x * factor, color="#9DB7D5", alpha=0.25, linewidth=0,
-                    label=f"IP 95 % (×/÷ {factor:.3f})")
-    ax.plot(x, x, color="#6B7280", linewidth=1.5, linestyle="--", label="identidad")
-    ax.scatter(peso, pred, s=42, color="#2B6CB0", edgecolor="white", linewidth=1.0, zorder=3,
-               label="vaca (predicción LOO)")
-    ax.set_xlim(lo, hi)
-    ax.set_ylim(lo, hi)
-    ax.set_aspect("equal")
-    ax.set_xlabel("peso de referencia (kg)")
-    ax.set_ylabel("peso predicho LOO (kg)")
-    ax.set_title(titulo, fontsize=10)
-    ax.grid(True, color="#E5E7EB", linewidth=0.8)
-    ax.set_axisbelow(True)
-    for lado in ("top", "right"):
-        ax.spines[lado].set_visible(False)
-    ax.legend(frameon=False, fontsize=8, loc="upper left")
+    pred = [r["pred_loo_kg"] for r in primary["predicciones"]]
+    fig, ax = plt.subplots(figsize=(6, 5))
+    ax.scatter(weights, pred)
+    limits = [min(weights + pred), max(weights + pred)]
+    ax.plot(limits, limits, "k--")
+    ax.set(xlabel="Peso de referencia (kg)", ylabel="Predicción LOO por animal (kg)", title="Una fotografía por animal")
     fig.tight_layout()
-    fig.savefig(ruta)
+    fig.savefig(a.out / "pred_vs_real.png", dpi=160)
     plt.close(fig)
-
-
-# ----------------------------------------------------------------------------- programa
-
-def construir_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
-        description="Ajusta y valida el modelo alométrico de peso (LOO por vaca) con la campaña de calibración.")
-    p.add_argument("--features", type=Path, default=FEATURES_DEFAULT, help="CSV de medidas por foto")
-    p.add_argument("--bitacora", type=Path, default=BITACORA_DEFAULT, help="CSV de la bitácora con los pesos")
-    p.add_argument("--out", type=Path, default=OUT_DEFAULT, help="directorio de salida")
-    p.add_argument("--n-boot", type=int, default=2000, help="réplicas bootstrap para el IC del MAPE")
-    p.add_argument("--seed", type=int, default=0, help="semilla del bootstrap")
-    p.add_argument("--todas", action="store_true",
-                   help="usar todas las fotos con estado ok en vez de las seleccionadas a 3 m")
-    return p
-
-
-def main(argv=None) -> int:
-    args = construir_parser().parse_args(argv)
-
-    bit = leer_bitacora(args.bitacora)
-    if bit["peso_ref_kg"].notna().sum() == 0:
-        print(f"sin pesos en la bitácora: peso_kg, peso_lb1 y peso_lb2 vacíos en las {len(bit)} filas",
-              file=sys.stderr)
-        return 2
-
-    f = leer_features(args.features)
-    filas = filas_seleccionadas(f, args.todas)
-    med = medianas_por_vaca(filas)
-    tabla = bit[["fila", "nombre", "peso_ref_kg", "arete"]].merge(med, on="fila", how="left")
-
-    excluidas = []
-    for _, r in tabla.iterrows():
-        if pd.isna(r["peso_ref_kg"]):
-            excluidas.append(f"{r['fila']} {r['nombre']}: sin peso")
-        elif pd.isna(r["n_fotos"]) or pd.isna(r[AREAS[0]]):
-            excluidas.append(f"{r['fila']} {r['nombre']}: sin fotos seleccionadas")
-    for e in excluidas:
-        print(f"excluida {e}", file=sys.stderr)
-
-    datos = tabla.dropna(subset=["peso_ref_kg", "n_fotos"] + list(AREAS)).reset_index(drop=True)
-    n = len(datos)
-    if n < 3:
-        print(f"solo {n} vacas con peso y fotos seleccionadas; se necesitan al menos 3", file=sys.stderr)
-        return 2
-
-    peso = datos["peso_ref_kg"].to_numpy(float)
-    resultados = {area: evaluar_alometrico(datos[area].to_numpy(float), peso, args.n_boot, args.seed)
-                  for area in AREAS}
-    principal = min(AREAS, key=lambda k: resultados[k]["mape"])
-    otra = [k for k in AREAS if k != principal][0]
-    rp = resultados[principal]
-
-    X_multi = np.column_stack([np.log(datos[principal].to_numpy(float))]
-                              + [datos[c].to_numpy(float) for c in COVARIABLES])
-    aic_multi = aic_ols(X_multi, np.log(peso))
-    mape_multi = mape(peso, loo_multivariado(X_multi, peso))
-
-    pesos_idx = datos.set_index("fila")["peso_ref_kg"]
-    pliegue = pliegue_distancia(f[f["estado"] == "ok"], pesos_idx, principal)
-    icc, cv_intra = repetibilidad(filas, rp["a"], rp["b"], principal)
-
-    metricas = {
-        "area": principal,
-        **redondear_alometrico(rp),
-        "n": int(n),
-        "n_fotos": int(datos["n_fotos"].sum()),
-        "seleccion": "todas_ok" if args.todas else "seleccionada_3m",
-        "aic_multivariado": round(aic_multi, 1),
-        "mape_multivariado": round(mape_multi, 2),
-        "mape_pliegue_distancia": pliegue,
-        "icc_repetibilidad": round(icc, 4) if np.isfinite(icc) else None,
-        "cv_intra_pct": round(cv_intra, 2) if np.isfinite(cv_intra) else None,
-        "bland_altman": bland_altman(bit),
-        "alternativa": {"area": otra, **redondear_alometrico(resultados[otra])},
-        "excluidas": excluidas,
-    }
-
-    args.out.mkdir(parents=True, exist_ok=True)
-    loo = pd.DataFrame({
-        "fila": datos["fila"].astype(int),
-        "nombre": datos["nombre"],
-        "peso_kg": np.round(peso, 1),
-        "pred_kg": np.round(rp["pred"], 1),
-        "ape_pct": np.round(np.abs(rp["pred"] - peso) / peso * 100, 2),
-        "modelo": f"alometrico_{principal}",
-    })
-    loo.to_csv(args.out / "resultados_loo.csv", index=False)
-    with open(args.out / "metricas.json", "w", encoding="utf-8") as fh:
-        json.dump(metricas, fh, indent=2, ensure_ascii=False)
-        fh.write("\n")
-    graficar(peso, rp["pred"], rp["factor_ip"], args.out / "pred_vs_real.png",
-             f"peso = {metricas['a']}·{principal}^{metricas['b']}  ·  n = {n}  ·  MAPE LOO {metricas['mape']:.2f} %")
-
-    print(f"vacas: {n} ({metricas['n_fotos']} fotos, {metricas['seleccion']}); excluidas: {len(excluidas)}")
-    print(f"modelo principal: {principal}  a = {metricas['a']}  b = {metricas['b']}")
-    print(f"MAPE LOO {metricas['mape']:.2f} % (IC95 {metricas['mape_ic95'][0]:.2f}–{metricas['mape_ic95'][1]:.2f})"
-          f"  R2 {metricas['r2']:.3f}  RMSE {metricas['rmse']:.1f} kg  MAE {metricas['mae']:.1f} kg")
-    print(f"IP 95 %: sigma_log {metricas['sigma_log']}  t {metricas['t']}  factor {metricas['factor_ip']}")
-    print(f"AIC alométrico {metricas['aic_alometrico']}  multivariado {metricas['aic_multivariado']}"
-          f"  (MAPE multivariado {metricas['mape_multivariado']:.2f} %)")
-    print(f"pliegue por distancia: {pliegue}")
-    print(f"repetibilidad: ICC(1) {metricas['icc_repetibilidad']}  CV intra {metricas['cv_intra_pct']} %")
-    print(f"alternativa {otra}: MAPE LOO {metricas['alternativa']['mape']:.2f} %")
-    print(f"salidas en {args.out}")
+    texto = texto_resumen(report, bundle if deployable else None, refs)
+    (a.out / "resumen.md").write_text(texto)
+    print(texto)
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main(sys.argv[1:]))
+    try:
+        sys.exit(main())
+    except (ValueError, KeyError, FileNotFoundError) as e:
+        print("ERROR:", e, file=sys.stderr)
+        sys.exit(1)
