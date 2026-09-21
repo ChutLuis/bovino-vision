@@ -1,0 +1,79 @@
+{
+  "modelo": "campana-994d9c2cd1a6",
+  "a": 2.3410310464203157,
+  "b": 0.5347334325347508,
+  "tolerancia_kg": 1e-08,
+  "fuente": "Contrato matem\u00e1tico del bundle; sin fotograf\u00edas ni referencias adicionales",
+  "casos": [
+    {
+      "foto": "golden-0",
+      "area_cm2": 9808.025364105313,
+      "peso_esperado_kg": 319.035707166257,
+      "limite_inferior_kg": 260.96307339090947,
+      "limite_superior_kg": 390.0313600867458
+    },
+    {
+      "foto": "golden-1",
+      "area_cm2": 10419.210438506143,
+      "peso_esperado_kg": 329.51696005462037,
+      "limite_inferior_kg": 270.52702631692455,
+      "limite_superior_kg": 401.36997933964005
+    },
+    {
+      "foto": "golden-2",
+      "area_cm2": 11068.48138455829,
+      "peso_esperado_kg": 340.34255265055276,
+      "limite_inferior_kg": 280.25414485713696,
+      "limite_superior_kg": 413.31432655078703
+    },
+    {
+      "foto": "golden-3",
+      "area_cm2": 11758.211515485862,
+      "peso_esperado_kg": 351.5237975171109,
+      "limite_inferior_kg": 290.1279752472767,
+      "limite_superior_kg": 425.91197941368006
+    },
+    {
+      "foto": "golden-4",
+      "area_cm2": 12490.92203703622,
+      "peso_esperado_kg": 363.07237886802073,
+      "limite_inferior_kg": 300.1320208819676,
+      "limite_superior_kg": 439.2118905190886
+    },
+    {
+      "foto": "golden-5",
+      "area_cm2": 13269.291263372039,
+      "peso_esperado_kg": 375.00036477748563,
+      "limite_inferior_kg": 310.2504135761541,
+      "limite_superior_kg": 453.2637747756923
+    },
+    {
+      "foto": "golden-6",
+      "area_cm2": 14096.164407249753,
+      "peso_esperado_kg": 387.320219791122,
+      "limite_inferior_kg": 320.46858534746843,
+      "limite_superior_kg": 468.11749893171896
+    },
+    {
+      "foto": "golden-7",
+      "area_cm2": 14974.563980270937,
+      "peso_esperado_kg": 400.04481795120046,
+      "limite_inferior_kg": 330.7738770950223,
+      "limite_superior_kg": 483.8225369400473
+    },
+    {
+      "foto": "golden-8",
+      "area_cm2": 15907.700841223226,
+      "peso_esperado_kg": 413.1874562498053,
+      "limite_inferior_kg": 341.15602553477544,
+      "limite_superior_kg": 500.4275499298844
+    },
+    {
+      "foto": "golden-9",
+      "area_cm2": 16898.985932896303,
+      "peso_esperado_kg": 426.76186852396756,
+      "limite_inferior_kg": 351.60748573937383,
+      "limite_superior_kg": 517.9801335659484
+    }
+  ]
+}

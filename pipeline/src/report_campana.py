@@ -13,7 +13,7 @@ en `informes/campana_20260912/`:
 
 Conteos, percentiles, ICC, CV y pendientes salen de los CSV; el texto fija solo el protocolo de la campaña.
 
-    python3 src/report_campana.py --fotos ~/Documents/Thesis_photos_12_09
+    python3 src/report_campana.py --fotos $BOVINO_CAMPANA_RAW
 """
 from __future__ import annotations
 
@@ -414,11 +414,12 @@ def texto_robustez(rob: pd.DataFrame, curva: pd.DataFrame, delta: float, delta_s
            + f" y el CV intra mediana baja de {_f(c0['cv_intra_mediana_pct'], 1)} % a "
            f"{_f(cd['cv_intra_mediana_pct'], 1)} %.",
            "3. **Cruda o corregida.** Se conservan las dos columnas (`lateral_area_cm2`, `lateral_area_cm2_corr`); la "
-           "invarianza a la distancia no decide por sí sola cuál predice mejor el peso. La decisión la toma la validación "
-           "leave-one-out con los pesos de referencia (`eval_weight_campana.py`: MAPE LOO por área).",
-           "4. **Uso de las fotografías.** El modelo principal usa por animal las 5 fotografías `ok` más cercanas a 3.0 m; "
-           "todas las fotografías `ok` sirven para esta robustez a la distancia y para el pliegue por distancia del "
-           "evaluador.", ""]
+           "invarianza a la distancia no decide por sí sola cuál predice mejor el peso. El modelo de peso usa el área cruda "
+           "de una fotografía por animal, fijado antes de recibir los pesos (`eval_weight_campana.py`); la corregida queda "
+           "como análisis de robustez.",
+           "4. **Uso de las fotografías.** El modelo principal usa una fotografía por animal: la primaria, la aceptada más "
+           "cercana a 3.0 m, o la siguiente aceptada del orden de preselección si la ruta rechazó la primaria; las cinco más cercanas sirven para la repetibilidad y el análisis secundario de medianas, y "
+           "todas las `ok` para esta robustez a la distancia.", ""]
     return "\n".join(md)
 
 
@@ -517,23 +518,25 @@ def texto_resumen(ctx: dict) -> str:
            f"corregida {_f(rob.iloc[0]['cociente_area_corr'], 3)}/{_f(rob.iloc[2]['cociente_area_corr'], 3)} "
            "(`robustez_distancia.md`, `robustez_distancia_delta.csv`). Corrección empírica: el marcador va delante del "
            "plano de la silueta y parte del efecto puede venir de la máscara a menor escala. |",
-           f"| Modelo principal con las {N_SELECCION} fotografías por animal más cercanas a 3.0 m | {len(con5)}/{len(rep)} "
+           f"| Preselección de las {N_SELECCION} fotografías por animal más cercanas a 3.0 m; la primaria es la más cercana | {len(con5)}/{len(rep)} "
            f"animales con {N_SELECCION}; d mediana {_f(sel['distancia_m'].median())} m; ICC(1) del log-área en las "
            f"seleccionadas {_f(icc['sel_area'], 3)} (cruda) / {_f(icc['sel_corr'], 3)} (corregida) frente a "
            f"{_f(icc['todas_area'], 3)} / {_f(icc['todas_corr'], 3)} con todas; CV intra mediana en las seleccionadas "
            f"{_f(rep['cv_area_sel_pct'].median(), 1)} % / {_f(rep['cv_area_corr_sel_pct'].median(), 1)} % "
            "(`repetibilidad.csv`). |",
-           "| Se conservan el área cruda y la corregida | La invarianza a la distancia no decide cuál predice mejor el peso; "
-           "la validación leave-one-out con los pesos de referencia (`eval_weight_campana.py`, MAPE LOO) elige la que entra "
-           "al modelo y deja la otra como alternativa. |",
+           "| Se conservan el área cruda y la corregida | El modelo de peso usa el área cruda de una fotografía por animal "
+           "(protocolo fijado antes de los pesos, `eval_weight_campana.py`); la corregida documenta la robustez a la "
+           "distancia y no entra al modelo. |",
            f"| Todas las fotografías `ok` sirven para la robustez a la distancia | {n_ok} medidas `ok` en tres niveles ("
            + "/".join(str(int(r["n_fotos"])) for _, r in rob.iterrows()) + " a "
            + "/".join(r["nivel"] for _, r in rob.iterrows()) + " m), {} animales (`robustez_distancia.csv`). |".format(
                ok["fila"].nunique()),
            "", "## Pesos", "",
-           "Los pesos de referencia los conserva la finca; el ajuste y la validación se ejecutan con "
-           "`eval_weight_campana.py` sobre la misma bitácora (`bitacora_campana_20260912.csv`: `peso_kg`, o media de "
-           "`peso_lb1`/`peso_lb2` × 0.45359237).", "",
+           "Pesos de referencia del 20 de septiembre de 2026: cinta bovinométrica, una lectura por animal, 40 animales "
+           "(`pesos_20260920.csv`; también en `peso_lb1`/`peso_kg` de la bitácora). "
+           "El ajuste y la validación del modelo de peso están en `peso/` (`eval_weight_campana.py` y "
+           "`weight_stats_campana.py`): una fotografía por animal (la primaria o, si la ruta la rechazó, la siguiente "
+           "aceptada del orden de preselección), área cruda de la ruta de la aplicación, leave-one-out por animal.", "",
            "## Repetibilidad", "",
            "| conjunto | fotografías | animales | ICC(1) log(área) | ICC(1) log(área corregida) | CV intra mediana área (%) | "
            "CV intra mediana área corregida (%) |", "|---|---|---|---|---|---|---|",
@@ -559,8 +562,9 @@ def texto_resumen(ctx: dict) -> str:
     md += ["", "## Reproducir", "", "```", "cd pipeline",
            ".venv/bin/python src/build_campana_csvs.py            # bitácora y fotos por vaca desde la separación por animal",
            ".venv/bin/python src/measure_campana.py               # rasgos por fotografía; overlays QA fuera del repo",
-           ".venv/bin/python src/report_campana.py --fotos ~/Documents/Thesis_photos_12_09",
-           ".venv/bin/python src/eval_weight_campana.py           # ajuste y validación con los pesos de la bitácora",
+           ".venv/bin/python src/report_campana.py --fotos $BOVINO_CAMPANA_RAW      # crudos fuera del repositorio",
+           ".venv/bin/python src/eval_weight_campana.py --out ../informes/campana_20260912/peso   # modelo de peso",
+           ".venv/bin/python src/weight_stats_campana.py          # estadística complementaria en peso/estadistica_extra",
            "```", ""]
     return "\n".join(md)
 

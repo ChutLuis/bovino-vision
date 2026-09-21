@@ -45,13 +45,13 @@ Por animal, las 5 fotografías `ok` con menor |d − 3.0| (desempate por nombre 
 | decisión | evidencia |
 |---|---|
 | Corrección de paralaje `A_corr = A·((d+Δ)/d)²` con Δ = 0.50 m, fórmula única y continua (no por tramos) | Pendiente intra-animal de log(área) sobre d: +9.6 %/m cruda → -0.4 %/m con Δ = 0.50 (cruce por cero en Δ\* = 0.48 m); CV intra mediana 5.0 % → 3.7 %; cocientes por nivel 2.5/3.5 m: cruda 0.934/1.029, corregida 0.995/0.983 (`robustez_distancia.md`, `robustez_distancia_delta.csv`). Corrección empírica: el marcador va delante del plano de la silueta y parte del efecto puede venir de la máscara a menor escala. |
-| Modelo principal con las 5 fotografías por animal más cercanas a 3.0 m | 40/40 animales con 5; d mediana 3.04 m; ICC(1) del log-área en las seleccionadas 0.977 (cruda) / 0.977 (corregida) frente a 0.893 / 0.929 con todas; CV intra mediana en las seleccionadas 1.5 % / 1.6 % (`repetibilidad.csv`). |
-| Se conservan el área cruda y la corregida | La invarianza a la distancia no decide cuál predice mejor el peso; la validación leave-one-out con los pesos de referencia (`eval_weight_campana.py`, MAPE LOO) elige la que entra al modelo y deja la otra como alternativa. |
+| Preselección de las 5 fotografías por animal más cercanas a 3.0 m; la primaria es la más cercana | 40/40 animales con 5; d mediana 3.04 m; ICC(1) del log-área en las seleccionadas 0.977 (cruda) / 0.977 (corregida) frente a 0.893 / 0.929 con todas; CV intra mediana en las seleccionadas 1.5 % / 1.6 % (`repetibilidad.csv`). |
+| Se conservan el área cruda y la corregida | El modelo de peso usa el área cruda de una fotografía por animal (protocolo fijado antes de los pesos, `eval_weight_campana.py`); la corregida documenta la robustez a la distancia y no entra al modelo. |
 | Todas las fotografías `ok` sirven para la robustez a la distancia | 1180 medidas `ok` en tres niveles (439/410/331 a 2.5/3.0/3.5 m), 40 animales (`robustez_distancia.csv`). |
 
 ## Pesos
 
-Los pesos de referencia los conserva la finca; el ajuste y la validación se ejecutan con `eval_weight_campana.py` sobre la misma bitácora (`bitacora_campana_20260912.csv`: `peso_kg`, o media de `peso_lb1`/`peso_lb2` × 0.45359237).
+Pesos de referencia del 20 de septiembre de 2026: cinta bovinométrica, una lectura por animal, 40 animales (`pesos_20260920.csv`; también en `peso_lb1`/`peso_kg` de la bitácora). El ajuste y la validación del modelo de peso están en `peso/` (`eval_weight_campana.py` y `weight_stats_campana.py`): una fotografía por animal (la primaria o, si la ruta la rechazó, la siguiente aceptada del orden de preselección), área cruda de la ruta de la aplicación, leave-one-out por animal.
 
 ## Repetibilidad
 
@@ -66,7 +66,6 @@ ICC(1) de una vía para grupos desbalanceados: `(MSB − MSW) / (MSB + (n0 − 1
 
 - `repetibilidad.csv`, `repetibilidad.png`: por animal, n y CV intra del área cruda y corregida (todas / seleccionadas).
 - `robustez_distancia.csv`, `robustez_distancia_delta.csv`, `robustez_distancia.png`, `robustez_distancia.md`: cociente por nivel, curva Δ → pendiente y lectura.
-- `mosaico_seleccion_3m.jpg`: la fotografía seleccionada más cercana a 3.0 m de cada animal (8×5 miniaturas, 0.89 MB).
 
 ## Reproducir
 
@@ -74,6 +73,7 @@ ICC(1) de una vía para grupos desbalanceados: `(MSB − MSW) / (MSB + (n0 − 1
 cd pipeline
 .venv/bin/python src/build_campana_csvs.py            # bitácora y fotos por vaca desde la separación por animal
 .venv/bin/python src/measure_campana.py               # rasgos por fotografía; overlays QA fuera del repo
-.venv/bin/python src/report_campana.py --fotos ~/Documents/Thesis_photos_12_09
-.venv/bin/python src/eval_weight_campana.py           # ajuste y validación con los pesos de la bitácora
+.venv/bin/python src/report_campana.py --fotos $BOVINO_CAMPANA_RAW      # crudos fuera del repositorio
+.venv/bin/python src/eval_weight_campana.py --out ../informes/campana_20260912/peso   # modelo de peso
+.venv/bin/python src/weight_stats_campana.py          # estadística complementaria en peso/estadistica_extra
 ```

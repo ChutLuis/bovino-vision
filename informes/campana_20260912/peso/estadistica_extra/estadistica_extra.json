@@ -1,0 +1,109 @@
+{
+  "n_animales": 40,
+  "semilla": 20260920,
+  "loo_reproducido_igual_al_evaluador": true,
+  "primario": {
+    "mape_pct": 7.7233152884486405,
+    "mape_ic95_pct": [
+      5.980610631646284,
+      9.568524078070716
+    ],
+    "a": 2.3410310464203534,
+    "b": 0.534733432534749,
+    "h1a_punto_menor_10": true,
+    "h1a_ic95_superior_menor_10": true,
+    "sd_ape_pp": 5.940230141886208,
+    "semianchura_ic95_aprox_pp": 1.8408963932466684,
+    "cobertura_ip95_loo": 0.975,
+    "fuera_ip95_n": 1,
+    "ape_max_pct": 20.155262467550102,
+    "ape_mediana_pct": 5.563125440280858
+  },
+  "kfold_agrupado_repetido": {
+    "5fold": {
+      "reps": 2000,
+      "media_pct": 7.771146756750363,
+      "sd_pct": 0.23872569461156723,
+      "p2_5": 7.415820442661387,
+      "p97_5": 8.35980617149724,
+      "min": 7.253509521531174,
+      "max": 8.695375824086426
+    },
+    "10fold": {
+      "reps": 2000,
+      "media_pct": 7.742350171895176,
+      "sd_pct": 0.14710736965749674,
+      "p2_5": 7.480984406992806,
+      "p97_5": 8.063511761081418,
+      "min": 7.3794569615680645,
+      "max": 8.294757964678837
+    },
+    "kfold_k_igual_n_es_loo": true
+  },
+  "bootstrap_coeficientes": {
+    "B": 5000,
+    "a_ic95": [
+      0.30612280116746,
+      17.30509923046422
+    ],
+    "b_ic95": [
+      0.32608940939552433,
+      0.7484284287854143
+    ],
+    "b_mediana": 0.5360719491131265
+  },
+  "referencias_simples": {
+    "predictor_medio_mape_pct": 10.22550664119691,
+    "exponente_1_5_mape_pct": 14.100852181593405,
+    "exponente_1_0_mape_pct": 9.158967539691892,
+    "exponente_libre_mape_pct": 7.7233152884486405
+  },
+  "modelo_piloto_sin_reajuste": {
+    "a": 0.375,
+    "b": 0.706,
+    "mape_pct": 17.717329379882436,
+    "mediana_ape_pct": 19.4701005401622,
+    "cociente_medio_pred_real": 0.8229109281965521,
+    "subestima_n": 39,
+    "factor_real_pred_geom": 1.220525899018347,
+    "sd_log": 0.09483702647965656,
+    "interpretacion": "transferencia entre protocolos de colocación del marcador; no calidad del ajuste nuevo"
+  },
+  "concordancia": {
+    "n": 40,
+    "bias_kg": -1.5112618463660312,
+    "sd_kg": 36.50476966105959,
+    "loa_kg": [
+      -73.06061038204282,
+      70.03808668931077
+    ],
+    "bias_pct": -0.004403570559186054,
+    "loa_pct": [
+      -17.35096242514328,
+      20.98288859350861
+    ],
+    "ccc_lin": 0.5612017035195302,
+    "r_pearson": 0.6069073365732914
+  },
+  "cinta_junio_dos_lecturas": {
+    "n": 35,
+    "iguales": 6,
+    "dif_abs_media_pct": 3.7460534505985117,
+    "dif_abs_max_pct": 11.885245901639344,
+    "dif_abs_media_kg": 13.957685214000001,
+    "dif_abs_max_kg": 41.73049804,
+    "sd_log_una_lectura": 0.03325554167226828,
+    "nota": "primera lectura el día del piloto, segunda el 12 de junio de 2026; incluye cambio biológico"
+  },
+  "cambio_junio_septiembre": {
+    "n": 22,
+    "cambio_medio_kg": 4.020477824999995,
+    "sd_kg": 22.541085360929078,
+    "cambio_abs_medio_pct": 4.788385017210196,
+    "sd_pct": 5.898949463412161,
+    "rango_pct": [
+      -11.515151515151516,
+      11.543287327478037
+    ]
+  }
+}
