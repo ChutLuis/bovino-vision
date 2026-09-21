@@ -1,3 +1,4 @@
+import { textoIntervalo, textoLibras } from '../estimation/interval';
 import {
   Image,
   Keyboard,
@@ -73,16 +74,6 @@ interface PuntoMostrado {
 }
 
 const GROSOR_ARISTA_MARCADOR = 3;
-
-// The margin describes the method, never this animal: deriving it from the
-// weight made a fixed error look like a per-photo measurement.
-const MARGEN_HABITUAL_KG = 13;
-
-function margenHabitualKg(intervalo: unknown): number {
-  return typeof intervalo === 'number' && Number.isFinite(intervalo) && intervalo > 0
-    ? Math.round(intervalo)
-    : MARGEN_HABITUAL_KG;
-}
 
 export function ResultadoScreen({ navigation, route }: ResultadoScreenProps) {
   const { aretePrellenado, resultado } = route.params;
@@ -397,7 +388,7 @@ function ResultadoExitoso({
     tamanoFoto != null && tamanoOriginal != null
       ? mapearEsquinasMarcador(resultado.esquinas_marcador, tamanoOriginal, tamanoFoto, 'cover')
       : null;
-  const margenKg = margenHabitualKg(resultado.intervalo_modelo);
+  const intervaloTexto = textoIntervalo(resultado.intervalo_modelo);
   const areteNormalizado = arete.trim();
   const puedeGuardar = areteNormalizado.length > 0;
   const aretesSugeridos = animales
@@ -441,10 +432,10 @@ function ResultadoExitoso({
         <View style={[styles.barraResumenCompacta, { paddingTop: insets.top + 8 }]}>
           <View style={styles.resumenCompactoInfo}>
             <Text style={styles.resumenCompactoPeso}>
-              {`${Math.round(resultado.peso_kg)} kg`}
+              {`${Math.round(resultado.peso_kg)} kg · ${textoLibras(resultado.peso_kg)}`}
             </Text>
             <Text style={styles.resumenCompactoPunto}>·</Text>
-            <Text style={styles.resumenCompactoMargen}>{`± ${margenKg} kg`}</Text>
+            <Text style={styles.resumenCompactoMargen}>{intervaloTexto}</Text>
           </View>
           <Pressable
             accessibilityLabel="Ocultar el teclado"
@@ -512,7 +503,8 @@ function ResultadoExitoso({
               <Text style={styles.peso}>{Math.round(resultado.peso_kg)}</Text>
               <Text style={styles.unidad}>kg</Text>
             </View>
-            <Text style={styles.margenMetodo}>{`Margen habitual del método: ± ${margenKg} kg`}</Text>
+            <Text style={styles.pesoLibras}>{textoLibras(resultado.peso_kg)}</Text>
+            <Text style={styles.margenMetodo}>{intervaloTexto}</Text>
           </View>
 
           <View style={styles.formulario}>
@@ -1175,6 +1167,9 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   resumenCompactoInfo: {
+    flex: 1,
+    minWidth: 0,
+    flexWrap: 'wrap',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -1186,6 +1181,7 @@ const styles = StyleSheet.create({
     lineHeight: 26,
   },
   resumenCompactoMargen: {
+    flexShrink: 1,
     color: colors.textoClaroSec,
     fontFamily: font.medium,
     fontSize: 15,
@@ -1246,6 +1242,13 @@ const styles = StyleSheet.create({
     fontFamily: font.bold,
     fontSize: 32,
     lineHeight: 36,
+  },
+  pesoLibras: {
+    marginTop: 2,
+    color: colors.verdeTinta,
+    fontFamily: font.medium,
+    fontSize: 22,
+    lineHeight: 26,
   },
   margenMetodo: {
     marginTop: 4,

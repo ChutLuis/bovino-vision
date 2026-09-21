@@ -1,3 +1,4 @@
+import { validarIntervalo } from './interval';
 import goldenCasesJson from '../../assets/model_bundle/golden_cases.json';
 import weightModelJson from '../../assets/model_bundle/weight_model.json';
 
@@ -28,6 +29,7 @@ export function cargarBundleModeloPeso(): ModeloPesoBundle {
   const bundle = weightModelJson as ModeloPesoBundle;
   validarNumeroPositivo(bundle.a, 'a');
   validarNumeroPositivo(bundle.b, 'b');
+  validarIntervalo(bundle.interval);
 
   if (typeof bundle.version !== 'string' || bundle.version.length === 0) {
     throw new Error('El bundle de peso no declara una version valida.');

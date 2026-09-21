@@ -1,3 +1,4 @@
+import { calcularIntervalo } from './interval';
 import {
   cargarBundleModeloPeso,
   cargarCasosGolden,
@@ -36,7 +37,7 @@ export function calcularPeso(areaCm2: number, modelo: ModeloPeso): ResultadoPeso
 
   return {
     peso_kg: modelo.a * areaCm2 ** modelo.b,
-    intervalo: modelo.interval,
+    intervalo: calcularIntervalo(areaCm2, modelo.a * areaCm2 ** modelo.b, modelo.interval),
   };
 }
 
