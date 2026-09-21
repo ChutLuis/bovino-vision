@@ -1,4 +1,4 @@
-import { calcularIntervalo } from './interval';
+import { calcularIntervalo, type IntervaloPeso } from './interval';
 import {
   cargarBundleModeloPeso,
   cargarCasosGolden,
@@ -9,11 +9,14 @@ export type ModeloPeso = ModeloPesoBundle;
 
 export interface ResultadoPeso {
   peso_kg: number;
-  intervalo: unknown | null;
+  intervalo: IntervaloPeso | null;
 }
+
+export type CampoGoldenPeso = 'peso_kg' | 'limite_inferior_kg' | 'limite_superior_kg';
 
 export interface FalloGoldenPeso {
   foto: string;
+  campo: CampoGoldenPeso;
   esperado_kg: number;
   obtenido_kg: number;
   diferencia_kg: number;
@@ -22,6 +25,7 @@ export interface FalloGoldenPeso {
 export interface InformeGoldenPeso {
   ok: boolean;
   casos_revisados: number;
+  intervalos_revisados: number;
   tolerancia_kg: number;
   fallos: FalloGoldenPeso[];
 }
@@ -41,28 +45,41 @@ export function calcularPeso(areaCm2: number, modelo: ModeloPeso): ResultadoPeso
   };
 }
 
+// Cada caso golden fija el peso y, cuando el bundle define intervalo, sus dos
+// limites: la app debe reproducir los tres numeros con la misma tolerancia.
 export function ejecutarGoldenPeso(): InformeGoldenPeso {
   const modelo = cargarModeloPeso();
   const golden = cargarCasosGolden();
   const fallos: FalloGoldenPeso[] = [];
+  let intervalosRevisados = 0;
+
+  const comparar = (foto: string, campo: CampoGoldenPeso, esperado: number, obtenido: number) => {
+    const diferencia = Math.abs(obtenido - esperado);
+
+    if (!Number.isFinite(diferencia) || diferencia > golden.tolerancia_kg) {
+      fallos.push({ foto, campo, esperado_kg: esperado, obtenido_kg: obtenido, diferencia_kg: diferencia });
+    }
+  };
 
   for (const caso of golden.casos) {
-    const obtenido = calcularPeso(caso.area_cm2, modelo).peso_kg;
-    const diferencia = Math.abs(obtenido - caso.peso_esperado_kg);
+    const resultado = calcularPeso(caso.area_cm2, modelo);
+    comparar(caso.foto, 'peso_kg', caso.peso_esperado_kg, resultado.peso_kg);
 
-    if (diferencia > golden.tolerancia_kg) {
-      fallos.push({
-        foto: caso.foto,
-        esperado_kg: caso.peso_esperado_kg,
-        obtenido_kg: obtenido,
-        diferencia_kg: diferencia,
-      });
+    if (caso.limite_inferior_kg === undefined || caso.limite_superior_kg === undefined) {
+      continue;
     }
+
+    intervalosRevisados += 1;
+    const inferior = resultado.intervalo?.inferior_kg ?? Number.NaN;
+    const superior = resultado.intervalo?.superior_kg ?? Number.NaN;
+    comparar(caso.foto, 'limite_inferior_kg', caso.limite_inferior_kg, inferior);
+    comparar(caso.foto, 'limite_superior_kg', caso.limite_superior_kg, superior);
   }
 
   return {
     ok: fallos.length === 0,
     casos_revisados: golden.casos.length,
+    intervalos_revisados: intervalosRevisados,
     tolerancia_kg: golden.tolerancia_kg,
     fallos,
   };

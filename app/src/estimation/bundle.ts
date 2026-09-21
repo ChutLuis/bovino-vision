@@ -14,6 +14,8 @@ export interface CasoGoldenPeso {
   foto: string;
   area_cm2: number;
   peso_esperado_kg: number;
+  limite_inferior_kg?: number;
+  limite_superior_kg?: number;
 }
 
 export interface GoldenCasesBundle {
@@ -49,6 +51,15 @@ export function cargarCasosGolden(): GoldenCasesBundle {
   for (const caso of bundle.casos) {
     validarNumeroPositivo(caso.area_cm2, `area_cm2 de ${caso.foto}`);
     validarNumeroPositivo(caso.peso_esperado_kg, `peso_esperado_kg de ${caso.foto}`);
+
+    if (caso.limite_inferior_kg !== undefined || caso.limite_superior_kg !== undefined) {
+      validarNumeroPositivo(caso.limite_inferior_kg, `limite_inferior_kg de ${caso.foto}`);
+      validarNumeroPositivo(caso.limite_superior_kg, `limite_superior_kg de ${caso.foto}`);
+
+      if (caso.limite_superior_kg <= caso.limite_inferior_kg) {
+        throw new Error(`El caso golden ${caso.foto} tiene los limites invertidos.`);
+      }
+    }
   }
 
   return bundle;
