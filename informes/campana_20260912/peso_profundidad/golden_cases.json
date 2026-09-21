@@ -1,0 +1,80 @@
+{
+  "modelo": "campana-depth-994d9c2cd1a6",
+  "a": 5.740670747552563,
+  "b": 1.0,
+  "tolerancia_kg": 1e-08,
+  "predictor": "D_media_cm",
+  "fuente": "Contrato matem\u00e1tico del bundle; sin fotograf\u00edas ni referencias adicionales",
+  "casos": [
+    {
+      "foto": "golden-0",
+      "valor_predictor": 55.93880980021749,
+      "peso_esperado_kg": 321.1262890730152,
+      "limite_inferior_kg": 268.4505138058571,
+      "limite_superior_kg": 384.13818648297837
+    },
+    {
+      "foto": "golden-1",
+      "valor_predictor": 57.913342416326806,
+      "peso_esperado_kg": 332.46143070240237,
+      "limite_inferior_kg": 278.9474868356425,
+      "limite_superior_kg": 396.24161579133914
+    },
+    {
+      "foto": "golden-2",
+      "valor_predictor": 59.95757224383556,
+      "peso_esperado_kg": 344.19668107445625,
+      "limite_inferior_kg": 289.63625911696323,
+      "limite_superior_kg": 409.0349586196972
+    },
+    {
+      "foto": "golden-3",
+      "valor_predictor": 62.07395946052823,
+      "peso_esperado_kg": 356.34616325981807,
+      "limite_inferior_kg": 300.4961183615893,
+      "limite_superior_kg": 422.57646708498834
+    },
+    {
+      "foto": "golden-4",
+      "valor_predictor": 64.26505108374297,
+      "peso_esperado_kg": 368.9244988464144,
+      "limite_inferior_kg": 311.5066424517132,
+      "limite_superior_kg": 436.92579001802744
+    },
+    {
+      "foto": "golden-5",
+      "valor_predictor": 66.5334840356412,
+      "peso_esperado_kg": 381.9468255361608,
+      "limite_inferior_kg": 322.6487778404132,
+      "limite_superior_kg": 452.14297265773786
+    },
+    {
+      "foto": "golden-6",
+      "valor_predictor": 68.88198831667526,
+      "peso_esperado_kg": 395.4288153627951,
+      "limite_inferior_kg": 333.9058719392905,
+      "limite_superior_kg": 468.2875060300017
+    },
+    {
+      "foto": "golden-7",
+      "valor_predictor": 71.31339029107349,
+      "peso_esperado_kg": 409.3866935527645,
+      "limite_inferior_kg": 345.2645345879355,
+      "limite_superior_kg": 485.41755109046585
+    },
+    {
+      "foto": "golden-8",
+      "valor_predictor": 73.83061608829645,
+      "peso_esperado_kg": 423.8372580518671,
+      "limite_inferior_kg": 356.715227788757,
+      "limite_superior_kg": 503.5894386300344
+    },
+    {
+      "foto": "golden-9",
+      "valor_predictor": 76.43669512455828,
+      "peso_esperado_kg": 438.79789974114533,
+      "limite_inferior_kg": 368.25253025556685,
+      "limite_superior_kg": 522.8574985855906
+    }
+  ]
+}
