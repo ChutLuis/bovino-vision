@@ -17,7 +17,7 @@ W = a·A^b → peso vivo estimado.
 | `app-benchmark/` | App con la que se midió en un Galaxy A25 la inferencia LiteRT, el ArUco móvil y la paridad con el pipeline (agosto de 2026). Herramienta interna. |
 | `docs/` | Requerimientos, protocolo de campo, arquitectura y UI. |
 | `informes/` | Benchmarks, paridades, evaluaciones del segmentador y pruebas en dispositivo, con sus datos (JSON, CSV, PNG, SQLite). |
-| `notebooks/` | `modelo_peso.ipynb`, ejecutado: datos del piloto, ajuste W = a·A^b con leave-one-out, coeficientes del paquete, foto con máscara y marcador, IoU del segmentador, paridad PC↔A25, tiempos y golden. |
+| `notebooks/` | `modelo_peso.ipynb`, ejecutado: datos de la campaña de calibración (40 animales, una fotografía por animal), ajuste W = a·A^b con leave-one-out por animal, coeficientes e intervalo del paquete, repetibilidad entre fotografías, predictor alternativo explorado, fotografías con el marcador, IoU del segmentador, paridad PC↔A25, tiempos (1280×960 y originales de 12 MP), golden, y el modelo del piloto con su transferencia a la campaña. |
 
 Los datos crudos de campo viven fuera del repositorio (`Thesis_final_raw/`, con `MANIFEST.sha1`); el repositorio lleva
 las fotos curadas, los pesos y el conjunto de validación anotado en `pipeline/data/`.

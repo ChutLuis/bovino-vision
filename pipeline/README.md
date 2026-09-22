@@ -26,7 +26,7 @@ exportar el `.tflite`, emular la ruta del APK en PC y evaluar IoU y paridad.
 | Escala ArUco | `generate_markers.py`, `validate_scale.py`, `eval_aruco_parity.py` (js-aruco2 vs OpenCV) |
 | Modelo de peso | `measure_fotos_hoy.py`, `measure_grouped_masks.py`, `eval_weight_fotos_hoy.py` (leave-one-out, IC bootstrap), `eval_compare_datasets.py`, `train_weight_model.py` |
 | Captura autónoma (prototipo Jetson) | `capture.py`, `detect_live.py`, `analyze_batch.py`, `benchmark_jetson.py`, `config.yaml` |
-| Campaña de calibración (sep 2026) | `build_campana_csvs.py` (bitácora y fotografías por animal), `measure_campana.py` (morfometría, distancia estimada y corrección de paralaje por fotografía), `report_campana.py` (`informes/campana_20260912/`), `eval_weight_campana.py` (una fotografía por animal, la primaria o la siguiente aceptada del orden de preselección; área cruda de la ruta de la aplicación, leave-one-out por animal, IC95 bootstrap, intervalo de predicción, AIC, ICC; escribe `weight_model.json` y `golden_cases.json`), `weight_stats_campana.py` (k-fold agrupado repetido, bootstrap de a y b, Bland–Altman, CCC, modelo del piloto sin reajuste, cinta de junio) |
+| Campaña de calibración (sep 2026) | `build_campana_csvs.py` (bitácora y fotografías por animal), `measure_campana.py` (morfometría, distancia estimada y corrección de paralaje por fotografía), `report_campana.py` (`informes/campana_20260912/`), `eval_weight_campana.py` (una fotografía por animal, la primaria o la siguiente aceptada del orden de preselección; área cruda de la ruta de la aplicación, leave-one-out por animal, IC95 bootstrap, intervalo de predicción, AIC, ICC; escribe `weight_model.json` y `golden_cases.json`), `weight_stats_campana.py` (k-fold agrupado repetido, bootstrap de a y b, Bland–Altman, CCC, modelo del piloto sin reajuste, cinta de junio), `measure_depth_campana.py` y `eval_weight_depth_campana.py` (predictor alternativo explorado, la profundidad corporal proyectada media, evaluado frente al área en `informes/campana_20260912/peso_profundidad/`), `repetibilidad_predictores_campana.py` (ICC, coeficiente de variación y rango del peso predicho entre fotografías del mismo animal para los dos predictores) |
 | Jornada de campo | `generate_field_guide.py` (guía imprimible) |
 
 `src/core/`: `aruco.py`, `calibration.py`, `cow_detector.py`, `segmenter.py` (Ultralytics `.pt`),
@@ -56,8 +56,9 @@ exportar el `.tflite`, emular la ruta del APK en PC y evaluar IoU y paridad.
 
 ## Notebook de evidencia
 
-`notebooks/modelo_peso.ipynb` (raíz del repositorio) reproduce con las funciones de `eval_weight_fotos_hoy.py` el
-modelo de peso y reúne IoU, paridad, tiempos del A25 y golden a partir de `informes/`. Se ejecuta con este entorno más
+`notebooks/modelo_peso.ipynb` (raíz del repositorio) reproduce con las funciones de `eval_weight_campana.py` y
+`eval_weight_fotos_hoy.py` los modelos de peso de la campaña y del piloto, y reúne repetibilidad, predictor alternativo
+explorado, IoU, paridad, tiempos del A25 y golden a partir de `informes/`. Se ejecuta con este entorno más
 `ipykernel` (`requirements.txt`).
 
 ## Jetson Orin Nano
