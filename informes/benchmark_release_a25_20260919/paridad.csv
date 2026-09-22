@@ -1,0 +1,13 @@
+bateria,caso,estable_A,estable_B,identico_A_vs_B,ok_obtenido,causa,cow_dets,area_px,area_ref,area_identica,confianza,delta_conf,peso_kg,delta_peso_rel,origen_ref
+bateria1,065052,True,True,True,True,,1,1259362,1259362,True,0.9420478940010071,0.0,383.72233761263686,0.0,A25 dev
+bateria1,073927_2,True,True,True,True,,2,733490,733490,True,0.9308141469955444,0.0,302.05735738523356,0.0,A25 dev
+bateria1,070836,True,True,True,False,sin_vaca,0,0,0,True,,,,,A25 dev
+bateria1,080328,True,True,True,False,sin_vaca,0,0,0,True,,,,,A25 dev
+bateria1,080628,True,True,True,False,sin_vaca,0,0,0,True,,,,,A25 dev
+bateria1,071121,True,True,True,True,,1,650185,650185,True,0.5064729452133179,2.9802322387695312e-06,339.9101551322042,3.7933228534250116e-08,PC jpeg-js
+bateria2,065052,True,True,True,True,,1,1259362,1259362,True,0.9420478940010071,0.0,383.72233761263686,0.0,A25 dev
+bateria2,073927_2,True,True,True,True,,2,733490,733490,True,0.9308141469955444,0.0,302.05735738523356,0.0,A25 dev
+bateria2,070836,True,True,True,False,sin_vaca,0,0,0,True,,,,,A25 dev
+bateria2,080328,True,True,True,False,sin_vaca,0,0,0,True,,,,,A25 dev
+bateria2,080628,True,True,True,False,sin_vaca,0,0,0,True,,,,,A25 dev
+bateria2,071121,True,True,True,True,,1,650185,650185,True,0.5064729452133179,2.9802322387695312e-06,339.9101551322042,3.7933228534250116e-08,PC jpeg-js

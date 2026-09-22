@@ -89,9 +89,12 @@ sequenceDiagram
   P->>DB: animal; estimacion(peso_kg, area_cm2, version_modelo, ruta_foto)
 ```
 
-Se segmenta antes de leer el marcador porque en el A25 cuesta 0.45 s frente a 1.4 s: una foto sin vaca se rechaza
-antes de pagar lo caro. Tiempo total ≈ 2.0 s por foto; arranque en frío 3.97 s, por eso el modelo se carga al abrir
-la app y no al tomar la foto.
+Se segmenta antes de leer el marcador porque en el A25 cuesta 0.45 s frente a 1.4 s con fotografías de 1280×960: una
+foto sin vaca se rechaza antes de pagar lo caro. Con esas fotografías el tiempo total es ≈ 2.0 s. Con los originales
+de 12 MP que produce el teléfono, la compilación de entrega tarda una mediana de 25.5–29.1 s por fotografía aceptada y
+de 13.2–16.0 s por rechazo (el rechazo temprano se conserva: ArUco no se ejecuta), tiempo dominado por la
+decodificación JPEG y por ArUco en JavaScript; la inferencia es ≈ 0.55 s (`informes/benchmark_release_a25_20260919/`).
+Arranque en frío 3.97 s, por eso el modelo se carga al abrir la app y no al tomar la foto.
 
 ## Decisiones y evidencia
 
@@ -130,7 +133,7 @@ de referencia; el `.pt` es su aproximación en PC.
 | Requisito | Verificación |
 |---|---|
 | RNF-01 sin conexión | Ningún módulo de red en el flujo de estimación; modelo y coeficientes dentro del APK |
-| RNF-02 ≤ 3 s por foto | ≈ 2.0 s (segmentación 0.45 s + marcador 1.4 s + postproceso) |
+| RNF-02 ≤ 3 s por foto | **No se cumple con originales de 12 MP**: mediana 25.5–29.1 s por fotografía aceptada en la compilación de entrega (JPEG ≈ 55 %, ArUco ≈ 40 %, inferencia ≈ 2 %; `informes/benchmark_release_a25_20260919/`). Con fotografías de 1280×960: ≈ 2.0 s (segmentación 0.45 s + marcador 1.4 s + postproceso) |
 | RNF-04 APK razonable | Modelo 12 MB |
 | RNF-06 privacidad | Datos en SQLite y directorio privado; salen solo por CSV compartido |
 | Compatibilidad | `minSdkVersion` 24, valor por defecto de la plantilla de Expo 57 que declara el APK release (`sdkVersion:'24'`) |
