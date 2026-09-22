@@ -53,6 +53,8 @@ Por animal, las 5 fotografías `ok` con menor |d − 3.0| (desempate por nombre 
 
 Pesos de referencia del 20 de septiembre de 2026: cinta bovinométrica, una lectura por animal, 40 animales (`pesos_20260920.csv`; también en `peso_lb1`/`peso_kg` de la bitácora). El ajuste y la validación del modelo de peso están en `peso/` (`eval_weight_campana.py` y `weight_stats_campana.py`): una fotografía por animal (la primaria o, si la ruta la rechazó, la siguiente aceptada del orden de preselección), área cruda de la ruta de la aplicación, leave-one-out por animal.
 
+Como resultado exploratorio, `peso_profundidad/` evalúa sobre los mismos 40 animales y las mismas fotografías un predictor alternativo, la profundidad corporal proyectada media de la banda central de la silueta (`measure_depth_campana.py`, `eval_weight_depth_campana.py`): reduce el MAPE de 7.72 a 6.54 % (diferencia pareada −1.18 puntos, IC95 [−2.18, −0.25]), pero es menos repetible entre fotografías del mismo animal (`peso_profundidad/repetibilidad_3m.md`: ICC(1) 0.968 frente a 0.978 del área; rango mediano del peso por animal a 3 m de 11.2 kg frente a 7.0 kg) y la diferencia queda bajo la resolución del estudio. La aplicación estima con el área.
+
 ## Repetibilidad
 
 | conjunto | fotografías | animales | ICC(1) log(área) | ICC(1) log(área corregida) | CV intra mediana área (%) | CV intra mediana área corregida (%) |
