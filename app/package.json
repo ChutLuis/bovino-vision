@@ -42,5 +42,6 @@
     "typecheck": "tsc --noEmit",
     "test:golden": "tsc -p tsconfig.golden.json && node .golden-build/tests/goldenWeightModel.js"
   },
-  "private": true
+  "private": true,
+  "license": "AGPL-3.0-or-later"
 }

@@ -56,7 +56,7 @@ Cada módulo de `vision/` y `estimation/` es espejo de uno del pipeline, mismo a
 
 | Campo | Contenido |
 |---|---|
-| `a`, `b` | Coeficientes de W = a·A^b con A en cm². Bundle vigente `campana-994d9c2cd1a6`: a = 2.3410, b = 0.5347, ajuste log-log sobre una fotografía por animal (la primaria o, si la ruta la rechazó, la siguiente aceptada del orden de preselección) de la campaña del 12 de septiembre de 2026 con pesos de cinta del 20 de septiembre, n = 40, LOO por animal (`informes/campana_20260912/peso/`). |
+| `a`, `b` | Coeficientes de W = a·A^b con A en cm². Bundle vigente `campana-994d9c2cd1a6`: a = 2.3410, b = 0.5347, ajuste log-log sobre una fotografía por animal (la primaria o, si la ruta la rechazó, la siguiente aceptada del orden de preselección) de la sesión de campo del 12 de septiembre de 2026 con pesos de cinta del 20 de septiembre, n = 40, LOO por animal (`informes/campana_20260912/peso/`). |
 | `interval` | `kind = loglog_prediction`, `level = 0.95`, `n`, `x_mean` y `sxx` (media y suma de cuadrados de ln A en el ajuste), `sigma_log`, `t_critical`, `area_min`, `area_max`. La app calcula para cada estimación `h = t_critical · sigma_log · √(1 + 1/n + (ln A − x_mean)² / sxx)` y los límites `peso · e^(−h)` y `peso · e^(h)`; fuera de `[area_min, area_max]` el resultado se marca como extrapolación. `interval = null` significa que el bundle no define intervalo y la pantalla lo dice. |
 | `version`, `fuente` | Identificador del ajuste (digest de las referencias y de las fotografías que entran) y su procedencia; `version` entra en `version_modelo`. |
 | `calibration` | Fecha de las fotografías, fechas e instrumentos de referencia, ruta de medida, animales y sha256 de las fuentes. Informativo: la app no lo lee. |
@@ -123,10 +123,12 @@ de referencia; el `.pt` es su aproximación en PC.
 | Fotos crudas de campo (ráfagas) | Fuera del repositorio: `Thesis_final_raw/` con `MANIFEST.sha1` | Los scripts las toman de `--raw` o `$BOVINO_RAW_GROUPED` |
 | Fotos curadas, pesos, morfometría, validación manual | `pipeline/data/field/`, `pipeline/data/val_clean/` | Versionados (`README_DATASETS.md`) |
 | Dataset YOLO-seg | `pipeline/data/field/seg_dataset/` | Generado por el builder; no se versiona |
-| Modelos | `pipeline/models/` (no versionados; `models/README.md` con sha256) y `app/assets/model_bundle/` (versionado) | |
+| Modelos | `pipeline/models/` (checkpoints `.pt` no versionados, con sha256 en `models/README.md`; exportaciones LiteRT y `weight_model.joblib` versionados) y `app/assets/model_bundle/` (versionado) | |
 | Estimaciones del usuario | `files/SQLite/wakx.db` (WAL): tablas `animal` y `estimacion` | Copiar `.db`, `-wal` y `-shm` para leerla fuera del teléfono |
 | Fotos confirmadas | `files/wakx-fotos/` (directorio privado de la app) | No entran a MediaStore |
-| Exportación | CSV por intent de compartir | Único dato que sale del dispositivo |
+| Exportación | CSV por intent de compartir | Única salida por acción del usuario; la otra vía posible es el respaldo de Android si el usuario lo habilita |
+| Actualización del modelo | Nuevo APK con el mismo paquete (`com.luisc.wakx`), la misma firma y un `versionCode` mayor | Se instala encima del anterior y conserva la base; la app no descarga modelos; cada fila guarda el `version_modelo` con que se calculó |
+| Respaldo ante pérdida del teléfono | CSV exportado al terminar cada pesaje y guardado fuera del teléfono | No incluye las fotos y no se importa para restaurar la base; `android:allowBackup="true"` depende de que el usuario active Auto Backup (límite de 25 MB) y no se ha ensayado una restauración |
 
 ## Requisitos no funcionales verificados en el A25
 
@@ -135,5 +137,5 @@ de referencia; el `.pt` es su aproximación en PC.
 | RNF-01 sin conexión | Ningún módulo de red en el flujo de estimación; modelo y coeficientes dentro del APK |
 | RNF-02 ≤ 3 s por foto | **No se cumple con originales de 12 MP**: mediana 25.5–29.1 s por fotografía aceptada en la compilación de entrega (JPEG ≈ 55 %, ArUco ≈ 40 %, inferencia ≈ 2 %; `informes/benchmark_release_a25_20260919/`). Con fotografías de 1280×960: ≈ 2.0 s (segmentación 0.45 s + marcador 1.4 s + postproceso) |
 | RNF-04 APK razonable | Modelo 12 MB |
-| RNF-06 privacidad | Datos en SQLite y directorio privado; salen solo por CSV compartido |
+| RNF-06 privacidad | Datos en SQLite y directorio privado; salen solo por CSV compartido o por el respaldo de Android si el usuario lo habilita |
 | Compatibilidad | `minSdkVersion` 24, valor por defecto de la plantilla de Expo 57 que declara el APK release (`sdkVersion:'24'`) |

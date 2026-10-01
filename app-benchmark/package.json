@@ -32,5 +32,6 @@
     "typecheck": "tsc --noEmit",
     "prebuild:android": "expo prebuild --platform android"
   },
-  "private": true
+  "private": true,
+  "license": "AGPL-3.0-or-later"
 }

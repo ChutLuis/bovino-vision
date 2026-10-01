@@ -8,7 +8,7 @@ learning, split por animal y aumento de datos. Independiente del modelo de peso 
 **El APK despliega el preentrenado COCO (`models/yolo26n-seg.pt`, clase 19).** El fine-tuning se
 implementó, se evaluó contra un conjunto de validación anotado a mano y **empeoró** al segmentador.
 El resultado negativo es el entregable: cierra la promesa del Cap. 3 con evidencia y deja el
-instrumento validado (IoU 0.86 y MAPE 7.71 % de la tesis) sin cambios.
+instrumento validado sin cambios: la ruta de la aplicación alcanza IoU 0.868 y el modelo de peso entregado, MAPE 7.72 %.
 
 Evaluación sobre las 40 imágenes manuales (24 animales, ninguno en train), PNG pintados como
 referencia, conf 0.45, imgsz 640, selección "mayor área" como en el pipeline de peso
@@ -76,6 +76,8 @@ anotación manual en las laterales controladas).
 
 ## Procedencia del modelo afinado
 
-`models/yolo26n-seg-finetuned.pt` (copia `models/finetuned_20260610_d6c65749.pt`): 80 épocas con ultralytics 8.4.53
-sobre el dataset de junio de 2026; mAP50(M) 0.92 sobre su validación automática y 0.718 de IoU sobre la manual. Las 40
+`models/yolo26n-seg-finetuned.pt` (copia `models/finetuned_20260610_d6c65749.pt`): 80 épocas programadas con ultralytics 8.4.53
+sobre el dataset de junio de 2026, detenidas por parada temprana en la 33 con los pesos de la época 13
+(`informes/ajuste_fino_20260610/`); mAP50(M) 0.92 sobre su validación automática y 0.725 de IoU sobre la manual
+(`informes/iou_val_manual_20260909/`). Las 40
 imágenes de validación se anotaron a mano en septiembre de 2026.
